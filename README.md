@@ -30,16 +30,13 @@ Traditional CAPTCHAs test *what* you click; this game secretly watches **how** y
   - Petting against the fur makes the cat flinch.
 - **Bot Rejection**: Mechanical, linear, constant-speed petting triggers rejection (*"Cat says you're a toaster."*).
 
-### 3. Sneak Past the Sleeping Cat
-- **Goal**: Reach the fish while the cat cycles between sleeping, twitch warning, and opening its eye.
-- **Cat Cycle**:
-  - **SLEEP** (random 2000–5000 ms).
-  - **TWITCH warning** (random 400–800 ms). About 1 in 3 twitches are **fake** (the cat doesn't open its eyes and falls back asleep with no penalty for moving).
-  - **EYE_OPEN** (1000 ms). Moving more than 3px/frame (6px on touch) gets caught. 2 catches = *"The cat ate you."*
-- **Reaction Latency Analysis**:
-  - Measures the stop latency between twitch start and when movement ceases for at least 100 ms.
-  - Flags superhuman reflexes (< 80 ms), eerie mechanical consistency (std dev < 15 ms), or psychic stops (*"You can't see the future, toaster"*).
-- **Debug Overlay**: Press **`D`** at any time to inspect live reaction metrics, states, and samples!
+### 3. Find the Hidden Cat (Structure-from-Motion Perception)
+- **Goal**: Identify which secret silhouette is hiding in dynamic static noise (Cat 🐱, Fish 🐟, Heart ❤️, Star ⭐).
+- **Concept**: A 360x300 px field of 900 random dots. Dots inside the secret shape move UP, dots outside move DOWN. Any single frame is indistinguishable from uniform static noise, but in motion the human visual cortex instantly reconstructs the shape through structure-from-motion.
+- **Rounds**: 3 rounds, 8 seconds each. Shapes never repeat consecutively. Pass requires at least 2 of 3 correct answers.
+- **Bot Rejection**:
+  - A computer vision bot analyzing static frames cannot perceive motion-defined shapes without temporal tracking, guessing blindly (*"Static. All I see is static. Toaster detected."*).
+  - Answering all 3 rounds in under 400 ms triggers immediate rejection (*"Answered before the dots even moved. Toaster detected."*).
 
 ---
 

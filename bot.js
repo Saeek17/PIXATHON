@@ -150,9 +150,9 @@ class BotRunner {
   }
 
   // ==========================================
-  // LEVEL 3 BOT: Inhuman 20ms Freeze Reaction
-  // Moves at constant speed, stops exactly 20ms after TWITCH starts,
-  // never gets caught, walks to the fish, and gets rejected by bot checks.
+  // LEVEL 3 BOT: Blind Static Frame Guesser
+  // The bot only sees a single static frame without motion perception,
+  // so it picks the first button every round and fails.
   // ==========================================
   runLevel3Bot() {
     if (!this.isActive) return;
@@ -165,57 +165,48 @@ class BotRunner {
 
       const input = this.game.input;
       const level = this.game.currentLevel;
-      const startX = level.startPos.x;
-      const startY = level.startPos.y;
-      const goalX = level.goalPos.x;
-      const goalY = level.goalPos.y;
 
-      let curX = startX;
-      let curY = startY;
-      input.simulateDown(curX, curY);
+      let hasAnsweredCurrentRound = false;
+      let lastRoundAnswered = 0;
 
-      let lastTime = performance.now();
-      const constantSpeed = 135; // px/sec constant speed
+      const botLoop = () => {
+        if (!this.isActive || this.game.gameState !== 'PLAYING' || this.game.currentLevelIndex !== 2) return;
 
-      const step = (now) => {
-        if (!this.isActive || this.game.gameState !== 'PLAYING') return;
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
+        if (level.state === 'PLAYING_ROUND' && level.currentRound !== lastRoundAnswered && !hasAnsweredCurrentRound) {
+          hasAnsweredCurrentRound = true;
+          const roundNum = level.currentRound;
 
-        // BOT BEHAVIOR:
-        // On TWITCH (real or fake): stop moving exactly 20ms after twitch starts
-        if (level.state === 'twitch') {
-          const timeSinceTwitch = now - level.twitchStartedAt;
-          if (timeSinceTwitch < 20) {
-            // Still moving for the first 20ms
-            curX = Math.min(goalX, curX + constantSpeed * dt);
-            input.simulateMove(curX, curY, now);
-          } else {
-            // Exactly 20ms: freeze completely!
-            input.simulateMove(curX, curY, now);
-          }
-        } else if (level.state === 'eye_open') {
-          // Eye is open: bot stays completely frozen, never gets caught!
-          input.simulateMove(curX, curY, now);
-        } else {
-          // Cat is sleeping: move forward at constant speed
-          curX = Math.min(goalX, curX + constantSpeed * dt);
-          input.simulateMove(curX, curY, now);
+          // Wait 600ms (pretend to process static frame), then tap button 0
+          this.currentStepTimer = setTimeout(() => {
+            if (!this.isActive || this.game.gameState !== 'PLAYING' || level.state !== 'PLAYING_ROUND') return;
+
+            if (level.currentButtons && level.currentButtons.length > 0) {
+              const btn = level.currentButtons[0];
+              const tapX = btn.x + btn.width / 2;
+              const tapY = btn.y + btn.height / 2;
+
+              input.simulateDown(tapX, tapY);
+              setTimeout(() => {
+                input.simulateUp(tapX, tapY);
+                lastRoundAnswered = roundNum;
+                hasAnsweredCurrentRound = false;
+              }, 80);
+            }
+          }, 600);
         }
 
-        const distToFish = Math.hypot(curX - goalX, curY - goalY);
-        if (distToFish <= CONFIG.LEVEL_3.goalRadius) {
-          input.simulateUp(curX, curY, now);
-          // Bot rejected on level 3! Wait for fail flash and show final modal
+        if (level.isCompleted) {
+          // Level 3 finished and rejected!
           this.currentStepTimer = setTimeout(() => {
             this.finishBotDemo();
           }, 2400);
-        } else {
-          this.animFrameId = requestAnimationFrame(step);
+          return;
         }
+
+        this.animFrameId = requestAnimationFrame(botLoop);
       };
 
-      this.animFrameId = requestAnimationFrame(step);
+      this.animFrameId = requestAnimationFrame(botLoop);
     };
 
     checkReady();

@@ -18,7 +18,7 @@ class Game {
     this.levels = [
       new Level1_SteadyPaw(this.input),
       new Level2_PetTheCat(this.input),
-      new Level3_SneakPastCat(this.input)
+      new Level3_FindHiddenCat(this.input)
     ];
 
     this.levelMetadata = [
@@ -36,9 +36,9 @@ class Game {
       },
       {
         id: 3,
-        name: "SNEAK PAST THE SLEEPING CAT",
-        instruction: "Reach the fish. Freeze when the cat opens an eye.",
-        introDialogue: CONFIG.CAPT_CHA_LINES.level3Intro
+        name: "FIND THE HIDDEN CAT",
+        instruction: "A cat is hiding in the static. Find it.",
+        introDialogue: "Look closely. Or don't. I'm a robot."
       }
     ];
 
@@ -256,7 +256,7 @@ class Game {
       } else {
         if (this.currentLevelIndex === 0) this.setDialogue(CONFIG.CAPT_CHA_LINES.level1FailWall);
         else if (this.currentLevelIndex === 1) this.setDialogue(CONFIG.CAPT_CHA_LINES.level2FailHiss);
-        else this.setDialogue(CONFIG.CAPT_CHA_LINES.level3FailCaught);
+        else this.setDialogue(CONFIG.CAPT_CHA_LINES.level3FailHidden);
       }
 
       // Deduct life only in human mode
@@ -322,7 +322,7 @@ class Game {
     this.ui.certScoreVal.textContent = `${avgScore} / 100`;
     this.ui.certL1Score.textContent = `Steady Paw Tremor: ${s1}%`;
     this.ui.certL2Score.textContent = `Organic Petting Warmth: ${s2}%`;
-    this.ui.certL3Score.textContent = `Hesitant Human Stealth: ${s3}%`;
+    this.ui.certL3Score.textContent = `Static Motion Perception: ${s3}%`;
 
     this.ui.certificateScreen.classList.remove('hidden');
   }

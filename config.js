@@ -137,86 +137,48 @@ const CONFIG = {
   },
 
   // ==========================================
-  // LEVEL 3: SNEAK PAST THE SLEEPING CAT
-  // "Reach the fish. Freeze when the cat opens an eye."
+  // LEVEL 3: FIND THE HIDDEN CAT
+  // Goal: "A cat is hiding in the static. Find it."
+  // Concept: Structure-from-Motion (Random Dot Kinematogram)
+  // Dots inside secret shape move UP, dots outside move DOWN.
   // ==========================================
   LEVEL_3: {
     // ------------------------------------------
-    // 1. CAT BEHAVIOR CYCLES (Unpredictable)
+    // ROUND SETTINGS
     // ------------------------------------------
-    // SLEEP duration: random 2000-5000 ms, re-rolled every cycle
-    sleepDurationMinMs: 2000,
-    sleepDurationMaxMs: 5000,
-
-    // TWITCH warning duration: random 400-800 ms, re-rolled every cycle
-    twitchDurationMinMs: 400,
-    twitchDurationMaxMs: 800,
-
-    // EYE_OPEN duration: 1000 ms
-    eyeOpenDurationMs: 1000,
-
-    // FAKE TWITCH: ~1 in 3 twitches (0.333), cat returns to SLEEP without opening eye
-    fakeTwitchChance: 0.333,
+    totalRounds: 3,                // 3 rounds
+    roundTimeLimitSeconds: 8.0,    // 8 seconds each round
+    requiredPassCount: 2,          // At least 2 of 3 correct to pass
 
     // ------------------------------------------
-    // 2. CATCH RULES (Game rule only, NEVER bot evidence)
+    // NOISE AREA GEOMETRY & DOT PARAMETERS
     // ------------------------------------------
-    // Moving > 3px per frame while EYE_OPEN = caught (mouse)
-    moveThresholdPxPerFrame: 3.0,
-    maxCatchesAllowed: 2, // 2 catches = level FAIL
-    msgCaughtFail: "The cat ate you.",
+    noiseWidth: 360,               // Rectangle width (px)
+    noiseHeight: 300,              // Rectangle height (px)
+    dotCount: 900,                 // 900 small square dots
+    dotSize: 2.5,                  // Small square dots (2.5 px)
+    dotColor: '#f8fafc',           // All dots same brightness (pure noise)
 
-    // ------------------------------------------
-    // 3. STOP-LATENCY MEASUREMENT (in milliseconds)
-    // ------------------------------------------
-    // Cursor movement must stay below threshold for 100 ms to confirm player stopped
-    stillConfirmationDurationMs: 100,
+    // Motion parameters (dots inside move UP, dots outside move DOWN)
+    // TUNE: If too hard to see, raise to 90-110. If too easy, lower to 60-70.
+    dotSpeed: 80,                  // Speed in pixels/second
+    dotJitter: 10,                 // Small horizontal jitter (+/-10 px/s)
+    dotRespawnChance: 0.02,        // 2% chance per frame to respawn at random
 
-    // Still during 150 ms window before twitch counts as preStopped
-    preStopWindowMs: 150,
-
-    // Must have moved at some point in the 1000 ms before twitch to record a sample
-    recentMovementWindowMs: 1000,
+    // Shapes pool (never repeat consecutive rounds)
+    availableShapes: ['CAT', 'FISH', 'HEART', 'STAR'],
 
     // ------------------------------------------
-    // 4. BOT DETECTION THRESHOLDS (MOUSE)
-    // Be lenient: much worse to reject a human than to let a bot through!
+    // BOT DETECTION THRESHOLDS
     // ------------------------------------------
-    // (a) TOO FAST: with 2+ samples, avg stopLatency < 80 ms
-    tooFastAvgMs: 80,
-    msgTooFast: "Reflexes of a toaster.",
+    // Bot answering too fast (< 400ms on all 3 rounds)
+    botMaxAnswerTimeMs: 400,
+    msgBotTooFast: "Answered before the dots even moved. Toaster detected.",
+    msgBotStatic: "Static. All I see is static. Toaster detected.",
 
-    // (b) TOO CONSISTENT: with 3+ samples, std dev of stopLatency < 15 ms
-    tooConsistentStdDevMs: 15,
-    msgTooConsistent: "Identical every time. Toaster detected.",
-
-    // (c) SEES THE FUTURE: preStopped is true on 2 or more twitches
-    maxPreStoppedCount: 2,
-    msgSeesTheFuture: "You can't see the future, toaster.",
-
-    // (d) ROBOTIC PACING: overall speed coefficient of variation < 0.08
-    minSpeedVariance: 0.08,
-    msgRoboticPacing: "Robotic pacing.",
-
-    // Geometry layout
-    goalRadius: 42,
-    startPos: { x: 90, y: 340 },
-    goalPos: { x: 860, y: 340 },
-    catPos: { x: 700, y: 220 },
-
-    // ------------------------------------------
-    // 5. TOUCH-SPECIFIC THRESHOLDS (More lenient)
-    // ------------------------------------------
-    TOUCH: {
-      moveThresholdPxPerFrame: 6.0,  // 6px per frame on touch
-      tooFastAvgMs: 65,              // Lenient latency threshold on touch
-      tooConsistentStdDevMs: 12,     // Lenient consistency threshold on touch
-      minSpeedVariance: 0.05,        // Lenient speed variance on touch
-      maxPreStoppedCount: 2
-    },
-
-    // Human pass message
-    msgPass: "Stealth confirmed. Inefficient human hesitation verified."
+    // Messages
+    msgFailHidden: "The cat stays hidden. Try again.",
+    msgPass: "Motion perceived. Human optical cortex verified."
   },
 
   // ==========================================
@@ -229,13 +191,13 @@ const CONFIG = {
     botDemoEnd: "Bot rejected. Now you try, warm-blood.",
     level1Intro: "Test 1: Steady Paw. Guide the paw to the fish. Humans shake and bump walls. Show me your organic tremor.",
     level2Intro: "Test 2: Pet The Cat. Cats despise mechanical hands. Pet gently until satisfied.",
-    level3Intro: "Test 3: Sneak Past The Sleeping Cat. When the eye opens, freeze. Do not twitch.",
+    level3Intro: "Test 3: Find The Hidden Cat. Look closely. Or don't. I'm a robot.",
     level1FailWall: "Ouch. Walls are solid matter. Please navigate around them.",
     level1FailBot: "Laser-smooth centerline and zero wall bumps. Toasters belong in the kitchen.",
     level2FailHiss: "The cat hissed at your crude technique. Learn some biological empathy.",
     level2FailBot: "Cat sensed cold metal. Cat says you're a toaster.",
-    level3FailCaught: "The feline detected your motion. Busted.",
-    level3FailBot: "Reaction time under 80 milliseconds. Reflexes of a toaster.",
+    level3FailHidden: "The cat stays hidden. Try again.",
+    level3FailBot: "Static. All I see is static. Toaster detected.",
     passLevel: "Adequately clumsy. You may proceed.",
     gameOver: "Human test failed. You have been classified as a Household Microwave.",
     certificate: "Congratulations. You have proven you possess genuine, clumsy human biology."

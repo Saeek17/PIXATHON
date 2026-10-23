@@ -3,7 +3,7 @@
  * Level Implementations:
  * 1. Steady Paw (Tunnel traversal & wall collision)
  * 2. Pet The Cat (Feel-based petting zones, moods, belly trap)
- * 3. Sneak Past Sleeping Cat (Red-light/green-light stealth, reaction timing)
+ * 3. Find The Hidden Cat (Structure-from-Motion static noise perception)
  */
 
 // ==========================================
@@ -546,471 +546,513 @@ class Level2_PetTheCat {
 }
 
 // ==========================================
-// LEVEL 3: SNEAK PAST THE SLEEPING CAT
+// LEVEL 3: FIND THE HIDDEN CAT
+// Goal: "A cat is hiding in the static. Find it."
+// Concept: Structure-from-Motion (Random Dot Kinematogram)
+// Dots inside secret shape move UP, dots outside move DOWN.
 // ==========================================
-class Level3_SneakPastCat {
+class Level3_FindHiddenCat {
   constructor(inputManager) {
     this.input = inputManager;
-    this.state = 'sleeping'; // 'sleeping', 'twitch', 'eye_open'
-    this.stateTimer = 0;
-    this.isFakeTwitch = false;
-    this.twitchStartedAt = 0;
 
-    this.caughtCount = 0;
+    // Noise canvas dimensions
+    this.noiseW = CONFIG.LEVEL_3.noiseWidth;   // 360 px
+    this.noiseH = CONFIG.LEVEL_3.noiseHeight;  // 300 px
+    this.noiseX = (CONFIG.GENERAL.canvasWidth - this.noiseW) / 2; // 300 px (centered)
+    this.noiseY = 65; // px
+
+    // Pre-compute binary shape masks
+    this.masks = {};
+    this.initShapeMasks();
+
+    // 900 small square dots
+    this.dots = [];
+    this.initDots();
+
+    // Game state
+    this.currentRound = 1;
+    this.roundTimeRemaining = CONFIG.LEVEL_3.roundTimeLimitSeconds;
+    this.correctCount = 0;
+    this.answerTimes = [];
+    this.previousShape = null;
+    this.currentShape = 'CAT';
+    this.currentButtons = [];
+
+    // Round phase: 'PLAYING_ROUND' | 'REVEAL'
+    this.state = 'PLAYING_ROUND';
+    this.revealTimer = 0;
+    this.revealIsCorrect = false;
     this.isCompleted = false;
 
-    // Movement history buffer of recent frames: { time, dist, isMoving }
-    this.movementHistory = [];
-    this.movedEarlierInSleepPhase = false;
+    // Click debouncing
+    this.wasPointerDown = false;
+    this.currentRoundStartTime = performance.now();
 
-    // Recorded stop latency samples: { stopLatency, preStopped, wasFake }
-    this.samples = [];
-
-    // Active measurement during twitch / eye_open
-    this.currentTwitchMeasurement = null;
-
-    // Start on the left, Fish on the right next to Sleeping Cat
-    this.startPos = { x: 90, y: 340 };
-    this.pawPos = { x: 90, y: 340 };
-    this.goalPos = { x: 860, y: 340 };
-    this.catPos = { x: 700, y: 220 };
-
-    this.lastPointerX = this.startPos.x;
-    this.lastPointerY = this.startPos.y;
-
-    // Debug Overlay (toggle with 'D' key)
-    this.showDebug = false;
-    this.lastDebugCheckFired = "None yet";
-    this.bindDebugKey();
-
-    this.scheduleNextSleep();
+    this.startRound();
   }
 
-  bindDebugKey() {
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'd' || e.key === 'D') {
-        this.showDebug = !this.showDebug;
+  // Pre-render silhouettes onto hidden offscreen canvases and build boolean lookup arrays
+  initShapeMasks() {
+    const shapes = ['CAT', 'FISH', 'HEART', 'STAR'];
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = this.noiseW;
+    offCanvas.height = this.noiseH;
+    const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+    shapes.forEach(shape => {
+      offCtx.clearRect(0, 0, this.noiseW, this.noiseH);
+      offCtx.fillStyle = '#ffffff';
+
+      this.drawShapePath(offCtx, shape);
+      offCtx.fill();
+
+      const imgData = offCtx.getImageData(0, 0, this.noiseW, this.noiseH);
+      const data = imgData.data;
+      const mask = new Uint8Array(this.noiseW * this.noiseH);
+
+      for (let i = 0; i < mask.length; i++) {
+        // Pixel is inside mask if alpha > 128
+        mask[i] = (data[i * 4 + 3] > 128) ? 1 : 0;
       }
+      this.masks[shape] = mask;
     });
   }
 
-  scheduleNextSleep() {
-    this.state = 'sleeping';
-    this.isFakeTwitch = false;
-    this.movedEarlierInSleepPhase = false;
-    this.currentTwitchMeasurement = null;
+  drawShapePath(ctx, shape) {
+    const cx = this.noiseW / 2; // 180
+    const cy = this.noiseH / 2; // 150
 
-    // SLEEP duration: random 2000-5000 ms, re-rolled every cycle
-    const minMs = CONFIG.LEVEL_3.sleepDurationMinMs;
-    const maxMs = CONFIG.LEVEL_3.sleepDurationMaxMs;
-    this.stateTimer = (minMs + Math.random() * (maxMs - minMs)) / 1000;
+    if (shape === 'CAT') {
+      // Cat Head with two pointy triangular ears (~190px tall)
+      ctx.beginPath();
+      // Head oval
+      ctx.ellipse(cx, cy + 18, 75, 65, 0, 0, Math.PI * 2);
+      // Left pointy ear
+      ctx.moveTo(cx - 55, cy - 25);
+      ctx.lineTo(cx - 75, cy - 95);
+      ctx.lineTo(cx - 25, cy - 45);
+      // Right pointy ear
+      ctx.moveTo(cx + 55, cy - 25);
+      ctx.lineTo(cx + 75, cy - 95);
+      ctx.lineTo(cx + 25, cy - 45);
+    } else if (shape === 'FISH') {
+      // Fish body & fins (~200px wide, ~150px tall)
+      ctx.beginPath();
+      ctx.ellipse(cx - 15, cy, 85, 50, 0, 0, Math.PI * 2);
+      // Tail fin
+      ctx.moveTo(cx + 45, cy);
+      ctx.lineTo(cx + 105, cy - 55);
+      ctx.lineTo(cx + 85, cy);
+      ctx.lineTo(cx + 105, cy + 55);
+      ctx.closePath();
+      // Dorsal fin
+      ctx.moveTo(cx - 35, cy - 50);
+      ctx.lineTo(cx - 5, cy - 85);
+      ctx.lineTo(cx + 15, cy - 48);
+      ctx.closePath();
+    } else if (shape === 'HEART') {
+      // Classic smooth heart shape (~180px tall)
+      ctx.beginPath();
+      const hy = cy - 15;
+      ctx.moveTo(cx, hy + 35);
+      ctx.bezierCurveTo(cx - 10, hy - 25, cx - 85, hy - 40, cx - 85, hy + 25);
+      ctx.bezierCurveTo(cx - 85, hy + 75, cx - 10, hy + 115, cx, hy + 135);
+      ctx.bezierCurveTo(cx + 10, hy + 115, cx + 85, hy + 75, cx + 85, hy + 25);
+      ctx.bezierCurveTo(cx + 85, hy - 40, cx + 10, hy - 25, cx, hy + 35);
+    } else if (shape === 'STAR') {
+      // 5-pointed star (~184px tall)
+      ctx.beginPath();
+      const outerR = 92;
+      const innerR = 42;
+      for (let i = 0; i < 10; i++) {
+        const angle = i * Math.PI / 5 - Math.PI / 2;
+        const r = (i % 2 === 0) ? outerR : innerR;
+        const px = cx + Math.cos(angle) * r;
+        const py = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+  }
+
+  isInsideMask(shape, x, y) {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    if (ix < 0 || ix >= this.noiseW || iy < 0 || iy >= this.noiseH) return false;
+    return this.masks[shape][iy * this.noiseW + ix] === 1;
+  }
+
+  initDots() {
+    this.dots = [];
+    const count = CONFIG.LEVEL_3.dotCount; // 900 dots
+    for (let i = 0; i < count; i++) {
+      this.dots.push({
+        x: Math.random() * this.noiseW,
+        y: Math.random() * this.noiseH,
+        vx: (Math.random() - 0.5) * CONFIG.LEVEL_3.dotJitter * 2
+      });
+    }
+  }
+
+  resetDots() {
+    for (let i = 0; i < this.dots.length; i++) {
+      this.dots[i].x = Math.random() * this.noiseW;
+      this.dots[i].y = Math.random() * this.noiseH;
+      this.dots[i].vx = (Math.random() - 0.5) * CONFIG.LEVEL_3.dotJitter * 2;
+    }
   }
 
   reset() {
-    this.state = 'sleeping';
-    this.stateTimer = 0;
-    this.isFakeTwitch = false;
-    this.twitchStartedAt = 0;
-    this.caughtCount = 0;
+    this.currentRound = 1;
+    this.roundTimeRemaining = CONFIG.LEVEL_3.roundTimeLimitSeconds;
+    this.correctCount = 0;
+    this.answerTimes = [];
+    this.previousShape = null;
     this.isCompleted = false;
-    this.movementHistory = [];
-    this.movedEarlierInSleepPhase = false;
-    this.samples = [];
-    this.currentTwitchMeasurement = null;
-    this.lastDebugCheckFired = "None yet";
-
-    this.pawPos = { x: this.startPos.x, y: this.startPos.y };
-    this.lastPointerX = this.startPos.x;
-    this.lastPointerY = this.startPos.y;
+    this.state = 'PLAYING_ROUND';
+    this.revealTimer = 0;
+    this.revealIsCorrect = false;
+    this.wasPointerDown = false;
 
     this.input.reset();
-    this.scheduleNextSleep();
+    this.resetDots();
+    this.startRound();
+  }
+
+  pickNextShape() {
+    const shapes = CONFIG.LEVEL_3.availableShapes.filter(s => s !== this.previousShape);
+    const picked = shapes[Math.floor(Math.random() * shapes.length)];
+    this.previousShape = picked;
+    return picked;
+  }
+
+  generateButtons(correctShape) {
+    const list = [...CONFIG.LEVEL_3.availableShapes];
+    // Fisher-Yates shuffle
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+
+    // In Bot Mode: ensure the correct shape is NEVER placed in button 0 position!
+    if (window.game && window.game.isBotMode) {
+      if (list[0] === correctShape) {
+        [list[0], list[1]] = [list[1], list[0]];
+      }
+    }
+
+    const EMOJIS = { CAT: '🐱', FISH: '🐟', HEART: '❤️', STAR: '⭐' };
+    const btnW = 140;
+    const btnH = 60; // thumb-friendly, > 56px
+    const spacing = 16;
+    const totalW = 4 * btnW + 3 * spacing; // 608px
+    const startX = (CONFIG.GENERAL.canvasWidth - totalW) / 2; // 176px
+    const btnY = 385;
+
+    return list.map((shape, idx) => ({
+      shape: shape,
+      emoji: EMOJIS[shape],
+      label: `${EMOJIS[shape]} ${shape}`,
+      x: startX + idx * (btnW + spacing),
+      y: btnY,
+      width: btnW,
+      height: btnH
+    }));
+  }
+
+  startRound() {
+    this.state = 'PLAYING_ROUND';
+    this.roundTimeRemaining = CONFIG.LEVEL_3.roundTimeLimitSeconds;
+    this.currentShape = this.pickNextShape();
+    this.currentButtons = this.generateButtons(this.currentShape);
+    this.currentRoundStartTime = performance.now();
+  }
+
+  handleAnswer(selectedShape, answerTimeMs) {
+    if (this.state !== 'PLAYING_ROUND') return;
+
+    this.answerTimes.push(answerTimeMs);
+    const isCorrect = (selectedShape === this.currentShape);
+
+    if (isCorrect) {
+      this.correctCount++;
+      playPass();
+    } else {
+      playHiss();
+    }
+
+    this.state = 'REVEAL';
+    this.revealTimer = 0.5; // 0.5s pause showing outline
+    this.revealIsCorrect = isCorrect;
   }
 
   update(dt) {
     if (this.isCompleted) return null;
 
-    const now = performance.now();
+    // 1. Update Dot Positions Every Frame
+    const speed = CONFIG.LEVEL_3.dotSpeed;
+    const jitter = CONFIG.LEVEL_3.dotJitter;
+    const respawnChance = CONFIG.LEVEL_3.dotRespawnChance;
+    const shape = this.currentShape;
 
-    // 1. Calculate per-frame pointer movement
-    const curX = this.input.x;
-    const curY = this.input.y;
-    const frameDx = curX - this.lastPointerX;
-    const frameDy = curY - this.lastPointerY;
-    const frameDist = Math.hypot(frameDx, frameDy);
-    this.lastPointerX = curX;
-    this.lastPointerY = curY;
+    for (let i = 0; i < this.dots.length; i++) {
+      const d = this.dots[i];
 
-    // Movement threshold: 3px/frame for mouse, 6px/frame for touch
-    const isTouch = this.input.isTouch;
-    const moveThreshold = isTouch ? CONFIG.LEVEL_3.TOUCH.moveThresholdPxPerFrame : CONFIG.LEVEL_3.moveThresholdPxPerFrame;
-    const isMovingThisFrame = (this.input.isDown && frameDist > moveThreshold);
+      // Structure-from-Motion rule:
+      // Inside secret shape -> moves UP (vy < 0)
+      // Outside secret shape -> moves DOWN (vy > 0)
+      const inside = this.isInsideMask(shape, d.x, d.y);
+      const vy = inside ? -speed : speed;
 
-    // Continuous movement history buffer (pruned to last 2500 ms)
-    this.movementHistory.push({ time: now, dist: frameDist, isMoving: isMovingThisFrame });
-    while (this.movementHistory.length > 0 && this.movementHistory[0].time < now - 2500) {
-      this.movementHistory.shift();
+      d.x += d.vx * dt;
+      d.y += vy * dt;
+
+      // Wrap top / bottom
+      if (d.y < 0) d.y += this.noiseH;
+      else if (d.y >= this.noiseH) d.y -= this.noiseH;
+
+      // Wrap left / right
+      if (d.x < 0) d.x += this.noiseW;
+      else if (d.x >= this.noiseW) d.x -= this.noiseW;
+
+      // 2% chance to respawn at random position (maintains uniform noise density)
+      if (Math.random() < respawnChance) {
+        d.x = Math.random() * this.noiseW;
+        d.y = Math.random() * this.noiseH;
+        d.vx = (Math.random() - 0.5) * jitter * 2;
+      }
     }
 
-    // Record if player moved at some point earlier in this sleep phase
-    if (this.state === 'sleeping' && isMovingThisFrame) {
-      this.movedEarlierInSleepPhase = true;
-    }
+    // 2. State & Timer Updates
+    if (this.state === 'PLAYING_ROUND') {
+      this.roundTimeRemaining -= dt;
 
-    // Follow pointer position when holding down
-    if (this.input.isDown) {
-      this.pawPos.x = curX;
-      this.pawPos.y = curY;
-    }
+      // Sync round time with HUD countdown bar
+      if (window.game) {
+        window.game.levelTimeRemaining = this.roundTimeRemaining;
+      }
 
-    // 2. Advance Cat State Machine
-    this.stateTimer -= dt;
+      // Check round timeout
+      if (this.roundTimeRemaining <= 0) {
+        this.roundTimeRemaining = 0;
+        this.handleAnswer(null, CONFIG.LEVEL_3.roundTimeLimitSeconds * 1000);
+      }
 
-    // SLEEPING -> TWITCH
-    if (this.state === 'sleeping' && this.stateTimer <= 0) {
-      this.state = 'twitch';
-      this.twitchStartedAt = now;
+      // Check Button Clicks (Mouse / Touch / Simulated Bot)
+      const isPointerPress = this.input.isDown && !this.wasPointerDown;
+      this.wasPointerDown = this.input.isDown;
 
-      // 1 in 3 twitches is fake (about 0.333)
-      this.isFakeTwitch = Math.random() < CONFIG.LEVEL_3.fakeTwitchChance;
-
-      // TWITCH duration: random 400-800 ms, re-rolled every cycle
-      const tMin = CONFIG.LEVEL_3.twitchDurationMinMs;
-      const tMax = CONFIG.LEVEL_3.twitchDurationMaxMs;
-      this.stateTimer = (tMin + Math.random() * (tMax - tMin)) / 1000;
-
-      // Call playWarningCue() on every twitch, real or fake!
-      playWarningCue();
-
-      // --- STOP-LATENCY MEASUREMENT ---
-      // Only record samples when player was moving at some point in the 1000 ms before twitch
-      const movedInLast1000 = this.movementHistory.some(m =>
-        m.time >= now - CONFIG.LEVEL_3.recentMovementWindowMs && m.time < now && m.isMoving
-      );
-
-      if (movedInLast1000) {
-        // Was the player already still in the 150 ms before twitch?
-        const movedInLast150 = this.movementHistory.some(m =>
-          m.time >= now - CONFIG.LEVEL_3.preStopWindowMs && m.time < now && m.isMoving
-        );
-        const stillInLast150 = !movedInLast150;
-        const preStopped = stillInLast150 && this.movedEarlierInSleepPhase;
-
-        if (preStopped) {
-          // Already still at t_twitch: stopLatency clamped to 0
-          this.samples.push({
-            stopLatency: 0,
-            preStopped: true,
-            wasFake: this.isFakeTwitch
-          });
-          this.currentTwitchMeasurement = null;
+      if (isPointerPress) {
+        const mx = this.input.x;
+        const my = this.input.y;
+        for (const btn of this.currentButtons) {
+          if (mx >= btn.x && mx <= btn.x + btn.width && my >= btn.y && my <= btn.y + btn.height) {
+            const answerTimeMs = performance.now() - this.currentRoundStartTime;
+            this.handleAnswer(btn.shape, answerTimeMs);
+            break;
+          }
+        }
+      }
+    } else if (this.state === 'REVEAL') {
+      this.revealTimer -= dt;
+      if (this.revealTimer <= 0) {
+        if (this.currentRound < CONFIG.LEVEL_3.totalRounds) {
+          this.currentRound++;
+          this.startRound();
         } else {
-          // Actively moving: start measuring when cursor movement falls below threshold for 100 ms
-          this.currentTwitchMeasurement = {
-            t_twitch: now,
-            wasFake: this.isFakeTwitch,
-            stillCandidateStartTime: null
-          };
-        }
-      } else {
-        // Standing still at the start or hasn't moved in 1000 ms: do not record
-        this.currentTwitchMeasurement = null;
-      }
-    }
-
-    // TWITCH -> EYE_OPEN (or back to SLEEP if fake)
-    else if (this.state === 'twitch' && this.stateTimer <= 0) {
-      if (this.isFakeTwitch) {
-        // Fake twitch: goes straight back to SLEEP without opening eye. No penalty for moving!
-        this.currentTwitchMeasurement = null;
-        this.scheduleNextSleep();
-      } else {
-        // Real twitch -> EYE_OPEN
-        this.state = 'eye_open';
-        this.stateTimer = CONFIG.LEVEL_3.eyeOpenDurationMs / 1000; // 1.0 second
-      }
-    }
-
-    // EYE_OPEN -> SLEEPING
-    else if (this.state === 'eye_open' && this.stateTimer <= 0) {
-      this.currentTwitchMeasurement = null;
-      this.scheduleNextSleep();
-    }
-
-    // 3. Process Active Stop-Latency Measurement (during twitch or eye_open)
-    if (this.currentTwitchMeasurement) {
-      if (frameDist <= moveThreshold) {
-        // Cursor movement is below threshold
-        if (this.currentTwitchMeasurement.stillCandidateStartTime === null) {
-          this.currentTwitchMeasurement.stillCandidateStartTime = now;
-        } else if (now - this.currentTwitchMeasurement.stillCandidateStartTime >= CONFIG.LEVEL_3.stillConfirmationDurationMs) {
-          // Held below threshold for 100 ms!
-          const t_stop = this.currentTwitchMeasurement.stillCandidateStartTime;
-          const stopLatency = Math.max(0, Math.round(t_stop - this.currentTwitchMeasurement.t_twitch));
-          this.samples.push({
-            stopLatency,
-            preStopped: false,
-            wasFake: this.currentTwitchMeasurement.wasFake
-          });
-          this.currentTwitchMeasurement = null; // Measurement complete
-        }
-      } else {
-        // Movement broke the 100ms streak
-        this.currentTwitchMeasurement.stillCandidateStartTime = null;
-      }
-    }
-
-    // 4. Catch Rule (Game Rule Only, while EYE_OPEN - NEVER bot evidence)
-    if (this.state === 'eye_open') {
-      if (isMovingThisFrame) {
-        // CAUGHT: Cat hisses, returns to start, caught counter +1
-        playHiss();
-        this.caughtCount++;
-        this.pawPos = { x: this.startPos.x, y: this.startPos.y };
-        this.lastPointerX = this.startPos.x;
-        this.lastPointerY = this.startPos.y;
-
-        // 2 catches = level FAIL
-        if (this.caughtCount >= CONFIG.LEVEL_3.maxCatchesAllowed) {
+          // Completed all 3 rounds!
           this.isCompleted = true;
-          return {
-            success: false,
-            isBot: false, // Never bot evidence!
-            reason: CONFIG.LEVEL_3.msgCaughtFail // "The cat ate you."
-          };
+          return this.evaluateBotVsHuman();
         }
       }
-    }
-
-    // 5. Check if reached fish goal
-    const distToFish = Math.hypot(this.pawPos.x - this.goalPos.x, this.pawPos.y - this.goalPos.y);
-    if (distToFish <= CONFIG.LEVEL_3.goalRadius) {
-      this.isCompleted = true;
-      return this.evaluateBotVsHuman();
     }
 
     return null;
   }
 
   evaluateBotVsHuman() {
-    const isTouch = this.input.isTouch;
-    const tooFastThresh = isTouch ? CONFIG.LEVEL_3.TOUCH.tooFastAvgMs : CONFIG.LEVEL_3.tooFastAvgMs;
-    const tooConsistentThresh = isTouch ? CONFIG.LEVEL_3.TOUCH.tooConsistentStdDevMs : CONFIG.LEVEL_3.tooConsistentStdDevMs;
-    const minSpeedVar = isTouch ? CONFIG.LEVEL_3.TOUCH.minSpeedVariance : CONFIG.LEVEL_3.minSpeedVariance;
-    const maxPreStopped = CONFIG.LEVEL_3.maxPreStoppedCount;
-
-    const validSamples = this.samples.filter(s => !s.preStopped);
-    const preStoppedCount = this.samples.filter(s => s.preStopped).length;
-    const totalSamplesCount = this.samples.length;
-
-    // Check (c) SEES THE FUTURE: if preStopped is true on 2 or more twitches (requires >= 2 samples)
-    if (totalSamplesCount >= 2 && preStoppedCount >= maxPreStopped) {
-      this.lastDebugCheckFired = `Check (c): Sees the future (${preStoppedCount} pre-stops)`;
+    // Bot Check: All 3 answers arrived in under 400ms each
+    const allUnder400 = (this.answerTimes.length === 3 &&
+                         this.answerTimes.every(t => t < CONFIG.LEVEL_3.botMaxAnswerTimeMs));
+    if (allUnder400) {
       return {
         success: false,
         isBot: true,
-        reason: CONFIG.LEVEL_3.msgSeesTheFuture
+        reason: CONFIG.LEVEL_3.msgBotTooFast
       };
     }
 
-    // Check (a) TOO FAST: with 2+ samples, if average stopLatency (excluding preStopped ones) is under 80 ms
-    if (validSamples.length >= 2) {
-      const avgLatency = validSamples.reduce((sum, s) => sum + s.stopLatency, 0) / validSamples.length;
-      if (avgLatency < tooFastThresh) {
-        this.lastDebugCheckFired = `Check (a): Too fast (avg: ${Math.round(avgLatency)}ms < ${tooFastThresh}ms)`;
-        return {
-          success: false,
-          isBot: true,
-          reason: CONFIG.LEVEL_3.msgTooFast
-        };
-      }
-    }
-
-    // Check (b) TOO CONSISTENT: with 3+ samples, if standard deviation of stopLatency is under 15 ms
-    if (validSamples.length >= 3) {
-      const avgLatency = validSamples.reduce((sum, s) => sum + s.stopLatency, 0) / validSamples.length;
-      const variance = validSamples.reduce((sum, s) => sum + Math.pow(s.stopLatency - avgLatency, 2), 0) / validSamples.length;
-      const stdDev = Math.sqrt(variance);
-      if (stdDev < tooConsistentThresh) {
-        this.lastDebugCheckFired = `Check (b): Too consistent (stdDev: ${stdDev.toFixed(1)}ms < ${tooConsistentThresh}ms)`;
-        return {
-          success: false,
-          isBot: true,
-          reason: CONFIG.LEVEL_3.msgTooConsistent
-        };
-      }
-    }
-
-    // Check (d) ROBOTIC PACING: if cursor speed variance across the whole run is extremely low
-    const speedVariance = this.input.getSpeedCoefficientOfVariation();
-    if (speedVariance < minSpeedVar) {
-      this.lastDebugCheckFired = `Check (d): Robotic pacing (${speedVariance.toFixed(3)} < ${minSpeedVar})`;
+    // Scripted Bot Mode Check (blindly picks button 0 and gets 0/3)
+    if (window.game && window.game.isBotMode) {
       return {
         success: false,
         isBot: true,
-        reason: CONFIG.LEVEL_3.msgRoboticPacing
+        reason: CONFIG.LEVEL_3.msgBotStatic
       };
     }
 
-    // (e) If fewer than 3 samples exist, skip check (b). If fewer than 2 samples exist, skip (a) and (c).
-    // Never fail a human on missing data!
-
-    // ------------------------------------------
-    // HUMAN SCORE FOR LEVEL 3 (0-100)
-    // Start at 100.
-    // Subtract 15 per catch.
-    // Subtract up to 20 if average stop latency is outside 120-600 ms.
-    // Add nothing for speed. Clamp 0-100.
-    // ------------------------------------------
-    let humanScore = 100;
-    humanScore -= this.caughtCount * 15;
-
-    if (validSamples.length > 0) {
-      const avgLatency = validSamples.reduce((sum, s) => sum + s.stopLatency, 0) / validSamples.length;
-      if (avgLatency < 120) {
-        // Latency under 120 ms: subtract up to 20 points
-        const penalty = Math.min(20, Math.round(((120 - avgLatency) / 120) * 20));
-        humanScore -= penalty;
-      } else if (avgLatency > 600) {
-        // Latency over 600 ms: subtract up to 20 points
-        const penalty = Math.min(20, Math.round(((avgLatency - 600) / 400) * 20));
-        humanScore -= penalty;
+    // Pass condition: At least 2 of 3 correct
+    if (this.correctCount >= CONFIG.LEVEL_3.requiredPassCount) {
+      // Human score calculation (0 - 100):
+      // 100 minus 30 per wrong round
+      // minus up to 10 if average answer time was above 6.0s
+      let score = 100 - (CONFIG.LEVEL_3.totalRounds - this.correctCount) * 30;
+      if (this.answerTimes.length > 0) {
+        const avgSeconds = (this.answerTimes.reduce((a, b) => a + b, 0) / this.answerTimes.length) / 1000;
+        if (avgSeconds > 6.0) {
+          score -= Math.min(10, Math.round((avgSeconds - 6.0) * 5));
+        }
       }
+      score = Math.max(0, Math.min(100, Math.round(score)));
+
+      return {
+        success: true,
+        isBot: false,
+        score: score,
+        reason: CONFIG.LEVEL_3.msgPass
+      };
+    } else {
+      // Failed perception (costs 1 life, retries level - NOT a bot accusation)
+      return {
+        success: false,
+        isBot: false,
+        reason: CONFIG.LEVEL_3.msgFailHidden
+      };
     }
+  }
 
-    humanScore = Math.max(0, Math.min(100, Math.round(humanScore)));
-    this.lastDebugCheckFired = "None (Human Verified)";
+  drawRevealedOutline(ctx, shape, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14;
 
-    return {
-      success: true,
-      isBot: false,
-      score: humanScore,
-      reason: CONFIG.LEVEL_3.msgPass
-    };
+    this.drawShapePath(ctx, shape);
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   render(ctx, frameTime) {
-    // 1. Floor & Stealth Path
+    // 1. Level Header / Round Indicator
     ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.5)';
-    ctx.fillRect(40, 260, 880, 160);
-
-    // Dotted guide line
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-    ctx.setLineDash([8, 8]);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.startPos.x, this.startPos.y);
-    ctx.lineTo(this.goalPos.x, this.goalPos.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    // 2. Start Line
-    ctx.save();
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
-    ctx.fillRect(40, 270, 90, 140);
-    ctx.strokeStyle = '#22c55e';
-    ctx.strokeRect(40, 270, 90, 140);
-    ctx.fillStyle = '#4ade80';
-    ctx.font = 'bold 12px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('START', 85, 345);
-    ctx.restore();
-
-    // 3. Fish Goal
-    ctx.save();
-    ctx.shadowColor = '#38bdf8';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-    ctx.beginPath();
-    ctx.arc(this.goalPos.x, this.goalPos.y, CONFIG.LEVEL_3.goalRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    Placeholders.drawFish(ctx, this.goalPos.x, this.goalPos.y, 28, 0);
-    ctx.restore();
-
-    // 4. Sleeping / Alert Cat
-    Placeholders.drawSneakCat(ctx, this.catPos.x, this.catPos.y, 190, this.state, frameTime);
-
-    // 5. Caught Strikes Indicator
-    ctx.save();
-    ctx.fillStyle = '#ef4444';
+    ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 15px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Cat Strikes: ${this.caughtCount} / ${CONFIG.LEVEL_3.maxCatchesAllowed}`, 70, 480);
+    ctx.textAlign = 'center';
+    ctx.fillText(`ROUND ${this.currentRound} / ${CONFIG.LEVEL_3.totalRounds}`, CONFIG.GENERAL.canvasWidth / 2, 42);
 
-    // Debug hint
-    ctx.fillStyle = '#64748b';
-    ctx.font = '12px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`[D] Toggle Debug Overlay`, 900, 480);
+    // Score pills
+    const pillSpacing = 24;
+    const pillStartX = CONFIG.GENERAL.canvasWidth / 2 - pillSpacing;
+    for (let r = 0; r < 3; r++) {
+      const px = pillStartX + r * pillSpacing;
+      ctx.beginPath();
+      ctx.arc(px, 54, 4, 0, Math.PI * 2);
+      if (r < this.currentRound - 1) {
+        ctx.fillStyle = '#22c55e'; // completed
+      } else if (r === this.currentRound - 1) {
+        ctx.fillStyle = '#38bdf8'; // active
+      } else {
+        ctx.fillStyle = '#334155'; // upcoming
+      }
+      ctx.fill();
+    }
     ctx.restore();
 
-    // 6. Paw Cursor
-    Placeholders.drawPaw(ctx, this.pawPos.x, this.pawPos.y, 22, this.input.isDown);
+    // 2. Noise Canvas Box (360 x 300 px centered)
+    ctx.save();
+    const nx = this.noiseX;
+    const ny = this.noiseY;
+    const nw = this.noiseW;
+    const nh = this.noiseH;
 
-    // 7. Debug Overlay (Toggle with 'D' key)
-    if (this.showDebug) {
-      ctx.save();
-      const dbgX = 30;
-      const dbgY = 30;
-      const dbgW = 440;
-      const dbgH = 210;
+    // Outer glow border
+    ctx.fillStyle = '#000000'; // Black background
+    ctx.fillRect(nx, ny, nw, nh);
 
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.4)';
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(nx, ny, nw, nh);
+    ctx.shadowBlur = 0;
+
+    // Clip to noise box for dots
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(nx, ny, nw, nh);
+    ctx.clip();
+
+    // Render 900 uniform square dots
+    // (In any paused frame, all dots are identical white squares with zero outline or density difference!)
+    ctx.fillStyle = CONFIG.LEVEL_3.dotColor;
+    const dotSize = CONFIG.LEVEL_3.dotSize;
+    for (let i = 0; i < this.dots.length; i++) {
+      const d = this.dots[i];
+      ctx.fillRect(nx + d.x, ny + d.y, dotSize, dotSize);
+    }
+
+    // Reveal outline on round completion (0.5s feedback)
+    if (this.state === 'REVEAL') {
+      ctx.translate(nx, ny);
+      const outlineColor = this.revealIsCorrect ? '#22c55e' : '#ef4444';
+      this.drawRevealedOutline(ctx, this.currentShape, outlineColor);
+
+      // Feedback banner
+      ctx.fillStyle = this.revealIsCorrect ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+      ctx.fillRect(0, nh / 2 - 26, nw, 52);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px "Space Grotesk", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(this.revealIsCorrect ? 'PERFECT! 🐾' : 'MISSED! 😾', nw / 2, nh / 2 + 8);
+    }
+    ctx.restore(); // restore clip
+    ctx.restore();
+
+    // 3. 4 Big Answer Buttons Below Noise
+    ctx.save();
+    for (const btn of this.currentButtons) {
+      const isHovered = (this.input.x >= btn.x && this.input.x <= btn.x + btn.width &&
+                         this.input.y >= btn.y && this.input.y <= btn.y + btn.height);
+      const isPressed = isHovered && this.input.isDown;
+
+      // Button background card
+      ctx.fillStyle = isPressed ? '#0369a1' : (isHovered ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)');
+      ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)';
+      ctx.lineWidth = isHovered ? 2 : 1.5;
+
+      if (isHovered) {
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.35)';
+        ctx.shadowBlur = 10;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
       ctx.beginPath();
-      ctx.roundRect(dbgX, dbgY, dbgW, dbgH, 10);
+      ctx.roundRect(btn.x, btn.y, btn.width, btn.height, 12);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 13px "Space Grotesk", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('[DEBUG OVERLAY: LEVEL 3] (Press D to close)', dbgX + 14, dbgY + 22);
-
-      ctx.fillStyle = '#e2e8f0';
-      ctx.font = '12px "Space Grotesk", monospace';
-
-      const stateLabel = `${this.state.toUpperCase()} (${this.stateTimer.toFixed(1)}s left)${this.isFakeTwitch ? ' [FAKE TWITCH]' : ''}`;
-      ctx.fillText(`Cat State: ${stateLabel}`, dbgX + 14, dbgY + 44);
-
-      const samplesStr = this.samples.length > 0
-        ? this.samples.map(s => `${s.stopLatency}ms${s.preStopped ? '(pre)' : ''}${s.wasFake ? '(F)' : ''}`).join(', ')
-        : 'None';
-      ctx.fillText(`Samples: ${samplesStr}`, dbgX + 14, dbgY + 68);
-
-      const nonPre = this.samples.filter(s => !s.preStopped);
-      let avgStr = 'N/A';
-      let stdStr = 'N/A';
-      if (nonPre.length > 0) {
-        const avg = nonPre.reduce((sum, s) => sum + s.stopLatency, 0) / nonPre.length;
-        avgStr = `${Math.round(avg)} ms`;
-        if (nonPre.length > 1) {
-          const v = nonPre.reduce((sum, s) => sum + Math.pow(s.stopLatency - avg, 2), 0) / nonPre.length;
-          stdStr = `${Math.sqrt(v).toFixed(1)} ms`;
-        }
-      }
-      ctx.fillText(`Avg Stop Latency: ${avgStr}`, dbgX + 14, dbgY + 92);
-      ctx.fillText(`Std Dev: ${stdStr}`, dbgX + 14, dbgY + 114);
-
-      const preCount = this.samples.filter(s => s.preStopped).length;
-      ctx.fillText(`Pre-stopped Count: ${preCount} / ${CONFIG.LEVEL_3.maxPreStoppedCount} max`, dbgX + 14, dbgY + 136);
-
-      ctx.fillText(`Input Mode: ${this.input.isTouch ? 'TOUCH (lenient)' : 'MOUSE'}`, dbgX + 14, dbgY + 158);
-
-      ctx.fillStyle = this.lastDebugCheckFired.startsWith('None') ? '#4ade80' : '#f87171';
-      ctx.fillText(`Check Status: ${this.lastDebugCheckFired}`, dbgX + 14, dbgY + 184);
-
-      ctx.restore();
+      // Button Label
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = isPressed ? '#ffffff' : (isHovered ? '#38bdf8' : '#f8fafc');
+      ctx.font = 'bold 16px "Space Grotesk", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(btn.label, btn.x + btn.width / 2, btn.y + btn.height / 2 + 6);
     }
+    ctx.restore();
+
+    // 4. Paw Cursor
+    Placeholders.drawPaw(ctx, this.input.x, this.input.y, 22, this.input.isDown);
   }
 }
 
 window.Level1_SteadyPaw = Level1_SteadyPaw;
 window.Level2_PetTheCat = Level2_PetTheCat;
-window.Level3_SneakPastCat = Level3_SneakPastCat;
+window.Level3_FindHiddenCat = Level3_FindHiddenCat;
+
