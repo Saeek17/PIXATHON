@@ -192,10 +192,16 @@ class Level1_SteadyPaw {
   }
 
   render(ctx, frameTime) {
-    // 1. Draw Tunnel Floor & Glowing Neon Boundaries
-    ctx.save();
+    // ==========================================
+    // LEVEL 1: RETRO ARCADE STEADY PAW (MATCHING SCREENSHOT)
+    // ==========================================
 
-    // Top & Bottom boundary paths
+    // 1. Deep Navy Background (Out-of-bounds walls)
+    ctx.save();
+    ctx.fillStyle = '#162036';
+    ctx.fillRect(0, 0, 960, 540);
+
+    // 2. Carved White Tunnel Floor
     ctx.beginPath();
     // Top boundary
     for (let i = 0; i < this.tunnelPoints.length; i++) {
@@ -214,62 +220,117 @@ class Level1_SteadyPaw {
     }
     ctx.closePath();
 
-    // Tunnel interior fill
-    const tunnelGrad = ctx.createLinearGradient(0, 0, 960, 0);
-    tunnelGrad.addColorStop(0, 'rgba(30, 41, 59, 0.7)');
-    tunnelGrad.addColorStop(1, 'rgba(15, 23, 42, 0.85)');
-    ctx.fillStyle = tunnelGrad;
+    // Crisp White Tunnel Fill with solid dark navy border
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
-
-    // Glowing Neon Wall Borders
-    ctx.strokeStyle = '#38bdf8';
-    ctx.shadowColor = '#0284c7';
-    ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#192238';
     ctx.lineWidth = 3;
     ctx.stroke();
-    ctx.restore();
 
-    // 2. Start Pad (Green Circle)
-    ctx.save();
-    ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = this.hasStarted ? 4 : 14;
-    ctx.fillStyle = this.hasStarted ? 'rgba(34, 197, 94, 0.25)' : 'rgba(34, 197, 94, 0.45)';
+    // 3. Center Guide Trail (Dotted line with mini paw footprints)
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.arc(this.startPos.x, this.startPos.y, CONFIG.LEVEL_1.startPadRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#4ade80';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    if (!this.hasStarted) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 13px "Space Grotesk", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('PRESS HERE', this.startPos.x, this.startPos.y + 5);
+    ctx.moveTo(this.tunnelPoints[0].x, this.tunnelPoints[0].y);
+    for (let i = 1; i < this.tunnelPoints.length; i++) {
+      ctx.lineTo(this.tunnelPoints[i].x, this.tunnelPoints[i].y);
     }
-    ctx.restore();
-
-    // 3. Goal Pad & Fish
-    ctx.save();
-    ctx.shadowColor = '#eab308';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.2)';
-    ctx.beginPath();
-    ctx.arc(this.goalPos.x, this.goalPos.y, CONFIG.LEVEL_1.fishPadRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 2.5;
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Render Fish
-    Placeholders.drawFish(ctx, this.goalPos.x, this.goalPos.y, 28, Math.sin(frameTime * 0.004) * 0.15);
+    // Mini paw footprint waypoints along center line
+    for (let i = 2; i < this.tunnelPoints.length - 1; i += 3) {
+      const pt = this.tunnelPoints[i];
+      Placeholders.drawPixelPaw(ctx, pt.x, pt.y, 14, false);
+    }
+
+    // 4. In-Canvas Top Status Ribbon
+    // Yellow/White ribbon across top
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 960, 36);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 0, 960, 36);
+
+    ctx.fillStyle = '#16a34a'; // Green sensor dot
+    ctx.beginPath();
+    ctx.arc(24, 18, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 12px "Silkscreen", "Space Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('STATUS: SENSOR CALIBRATED', 38, 22);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px "Space Mono", monospace';
+    ctx.fillText('DRAG PAW OR CURSOR OVER TRAIL', 936, 22);
+
+    // 5. Slanted Orange Protocol Sticker
+    ctx.save();
+    ctx.translate(480, 52);
+    ctx.rotate(-0.015);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-170, -12, 340, 24);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-170, -12, 340, 24);
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐾 TABBY DISTRACTION PROTOCOL ACTIVE', 0, 4);
     ctx.restore();
 
-    // 4. Paw Trajectory Trail (Full visible path)
+    // 6. Start Node Box (Matching Screenshot Box)
+    const sx = this.startPos.x;
+    const sy = this.startPos.y;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx - 36, sy - 42, 72, 84);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(sx - 36, sy - 42, 72, 84);
+    ctx.strokeRect(sx - 32, sy - 38, 64, 76); // Double border
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('START', sx, sy - 24);
+
+    // Paw icon inside start box
+    Placeholders.drawPixelPaw(ctx, sx, sy, 26, this.hasStarted);
+
+    ctx.font = 'bold 9px "Space Mono", monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('DRAG ME', sx, sy + 28);
+
+    // 7. Goal Node Box (Matching Screenshot Box)
+    const gx = this.goalPos.x;
+    const gy = this.goalPos.y;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(gx - 38, gy - 42, 76, 84);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(gx - 38, gy - 42, 76, 84);
+    ctx.strokeRect(gx - 34, gy - 38, 68, 76); // Double border
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('GOAL', gx, gy - 24);
+
+    // Pixel gold fish inside goal box
+    Placeholders.drawPixelFish(ctx, gx, gy, 32, Math.sin(frameTime * 0.005) * 0.15);
+
+    ctx.font = 'bold 9px "Space Mono", monospace';
+    ctx.fillStyle = '#d97706';
+    ctx.fillText('GOLD FISH', gx, gy + 28);
+
+    // 8. Player Trajectory Trail (Drawn as user moves paw)
     if (this.trail.length > 1) {
       ctx.save();
-      // Connect line
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
+      ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 4;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -280,33 +341,57 @@ class Level1_SteadyPaw {
       }
       ctx.stroke();
 
-      // Cute paw prints along the curved path
-      for (let i = 0; i < this.trail.length; i += 4) {
+      // Mini footprint points along player path
+      for (let i = 0; i < this.trail.length; i += 5) {
         const pt = this.trail[i];
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
+        ctx.fillStyle = '#ea580c';
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
     }
 
-    // 5. Wall Bump Markers & Live Clumsiness Indicator
-    ctx.save();
+    // 9. Wall Bump Markers & Live Feedback
     for (const b of this.bumpPositions) {
-      ctx.fillStyle = '#f43f5e';
-      ctx.font = 'bold 12px "Space Grotesk", sans-serif';
-      ctx.fillText('💥 bump', b.x, b.y - 8);
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 12px "Silkscreen", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('💥 BUMP!', b.x, b.y - 12);
     }
 
-    // Live bump counter badge
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '13px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Wall Touches: ${this.wallBumps} (Natural human shakiness)`, 480, 480);
-    ctx.restore();
+    // 10. Bottom Action Strip (Matching Screenshot)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 500, 960, 40);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 500, 960, 40);
 
-    // 6. Active Cursor Paw
+    // Reset Paw Button Box
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(16, 506, 110, 28);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(16, 506, 110, 28);
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('RESET PAW', 71, 524);
+
+    // Attempts Readout
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px "Space Mono", monospace';
+    ctx.fillText(`ATTEMPTS: 01   |   WALL TOUCHES: ${this.wallBumps}`, 142, 524);
+
+    // Pro-tip
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('TIP: MOVE SLOWLY THROUGH CHOKEPOINTS', 944, 524);
+
+    // 11. Paw Cursor
+    Placeholders.drawPixelPaw(ctx, this.input.x, this.input.y, 24, this.input.isDown);
+    ctx.restore();
   }
 }
 
@@ -485,63 +570,184 @@ class Level2_PetTheCat {
   }
 
   render(ctx, frameTime) {
-    // 1. Cat Body
-    Placeholders.drawPettingCat(ctx, this.catX, this.catY, this.catWidth, this.catHeight, this.mood, frameTime);
+    // ==========================================
+    // LEVEL 2: RETRO ARCADE PET THE CAT (MATCHING SCREENSHOT)
+    // ==========================================
 
-    // 2. Floating Hearts / Purr Particles
+    // 1. Warm Cream Paper Canvas Background
     ctx.save();
-    for (const p of this.particles) {
-      ctx.fillStyle = `rgba(244, 63, 94, ${p.alpha})`;
-      ctx.font = `${p.size}px sans-serif`;
-      ctx.fillText('💖', p.x, p.y);
+    ctx.fillStyle = '#fbf7ee';
+    ctx.fillRect(0, 0, 960, 540);
+
+    // Subtle micro-grid
+    ctx.strokeStyle = 'rgba(25, 34, 56, 0.06)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 960; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 540); ctx.stroke();
     }
-    ctx.restore();
-
-    // 3. Purr Meter Bar (Rendered on Canvas for high visibility)
-    ctx.save();
-    const meterX = 280;
-    const meterY = 460;
-    const meterW = 400;
-    const meterH = 26;
-
-    // Background track
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(meterX, meterY, meterW, meterH, 13);
-    ctx.fill();
-    ctx.stroke();
-
-    // Filled portion
-    const fillW = Math.max(0, (this.purrMeter / CONFIG.LEVEL_2.targetPurr) * meterW);
-    if (fillW > 0) {
-      const grad = ctx.createLinearGradient(meterX, 0, meterX + meterW, 0);
-      grad.addColorStop(0, '#f43f5e');
-      grad.addColorStop(1, '#fb7185');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.roundRect(meterX, meterY, fillW, meterH, 13);
-      ctx.fill();
+    for (let y = 0; y < 540; y += 32) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(960, y); ctx.stroke();
     }
 
-    // Label
+    // 2. In-Canvas Top Status Ribbon
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 13px "Space Grotesk", sans-serif';
+    ctx.fillRect(0, 0, 960, 34);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 0, 960, 34);
+
+    ctx.fillStyle = this.mood === 'annoyed' ? '#ef4444' : '#16a34a';
+    ctx.beginPath();
+    ctx.arc(24, 17, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 11px "Silkscreen", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('STATUS: TACTILE VERIFICATION SENSORS ARMED', 38, 21);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px "Space Mono", monospace';
+    ctx.fillText('(PRESS & DRAG TO CHIN/HEAD — AVOID BELLY TRAP)', 936, 21);
+
+    // 3. Left Section: Chunky Pixel Art Orange Tabby Cat
+    Placeholders.drawPixelTabbyCat(ctx, 60, 80, 500, 320, this.mood, frameTime);
+
+    // 4. Floating Pixel Hearts on Petting
+    for (const p of this.particles) {
+      Placeholders.drawPixelHeart(ctx, p.x, p.y, p.size, '#f43f5e');
+    }
+
+    // 5. Retro Sound Ticker Box Below Cat
+    const tickY = 416;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(80, tickY, 460, 38);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(80, tickY, 460, 38);
+
+    ctx.fillStyle = this.mood === 'annoyed' ? '#ef4444' : '#192238';
+    ctx.font = 'bold 11px "Space Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`PURR METER: ${Math.round(this.purrMeter)}%`, meterX + meterW * 0.5, meterY + 18);
+    if (this.mood === 'annoyed') {
+      ctx.fillText('[ 😾 HISS! ROUGH STROKE OR BELLY TRAP TRIGGERED! ]', 310, tickY + 23);
+    } else if (this.mood === 'content') {
+      ctx.fillText('[ 💖 PURRRRRRR... PURRRR... <PURR DETECTED> ]', 310, tickY + 23);
+    } else {
+      ctx.fillText('[ ... AWAITING GENTLE HEAD-TO-TAIL BIOMETRIC STROKES ... ]', 310, tickY + 23);
+    }
 
-    // Mood Badge
-    let moodEmoji = this.mood === 'content' ? '😸 Content' :
-                     this.mood === 'annoyed' ? '😾 Annoyed (Hiss!)' : '😐 Neutral';
-    ctx.font = '14px "Space Grotesk", sans-serif';
-    ctx.fillStyle = this.mood === 'annoyed' ? '#ef4444' : '#facc15';
-    ctx.fillText(`Cat Mood: ${moodEmoji}`, meterX + meterW * 0.5, meterY - 14);
+    // 6. Right Section: Retro Vertical Purr Meter Panel (Matching Screenshot)
+    const pxX = 630;
+    const pxY = 50;
+    const pxW = 250;
+    const pxH = 415;
 
+    // Hard drop shadow
+    ctx.fillStyle = '#192238';
+    ctx.fillRect(pxX + 4, pxY + 4, pxW, pxH);
+
+    // Main Card
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(pxX, pxY, pxW, pxH);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(pxX, pxY, pxW, pxH);
+
+    // Panel Header
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 12px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PURR METER', pxX + pxW / 2, pxY + 26);
+    ctx.font = '10px "Space Mono", monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('(0 - 100)', pxX + pxW / 2, pxY + 40);
+
+    // 10 Segmented Purr Levels (10 to 100)
+    const segCount = 10;
+    const segH = 20;
+    const segStartY = pxY + 52;
+    const segW = pxW - 40;
+    const segX = pxX + 20;
+
+    for (let i = 0; i < segCount; i++) {
+      // Draw from top (100) to bottom (010)
+      const levelVal = (10 - i) * 10;
+      const curY = segStartY + i * (segH + 4);
+      const isFilled = this.purrMeter >= levelVal;
+
+      // Box
+      ctx.fillStyle = isFilled ? '#fee2e2' : '#f8fafc';
+      ctx.fillRect(segX, curY, segW, segH);
+      ctx.strokeStyle = isFilled ? '#ef4444' : '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(segX, curY, segW, segH);
+
+      // Label (e.g. 070)
+      ctx.textAlign = 'left';
+      ctx.fillStyle = isFilled ? '#dc2626' : '#94a3b8';
+      ctx.font = 'bold 9px "Space Mono", monospace';
+      ctx.fillText(levelVal < 100 ? `0${levelVal}` : `${levelVal}`, segX + 12, curY + 14);
+
+      // Heart Icon if filled
+      if (isFilled) {
+        Placeholders.drawPixelHeart(ctx, segX + segW - 20, curY + 10, 12, '#ef4444');
+      } else {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(segX + segW - 14, curY + 10, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Readout Box
+    const readY = pxY + 300;
+    ctx.fillStyle = '#192238';
+    ctx.fillRect(segX, readY, segW, 36);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.round(this.purrMeter)} / 100`, pxX + pxW / 2, readY + 24);
+
+    // Action Badge (RAPID SCRATCH)
+    const actY = pxY + 348;
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(segX, actY, segW, 32);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(segX, actY, segW, 32);
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", monospace';
+    ctx.fillText('RAPID SCRATCH', pxX + pxW / 2, actY + 20);
+
+    // 7. Bottom Proving Criteria Banner
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 495, 960, 45);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 495, 960, 45);
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[ PROVING CRITERIA: MAINTAIN GENTLE HEAD-TO-TAIL STROKES TO REACH 100 PURR ]', 480, 522);
+
+    // 8. Hand / Paw Cursor with Action Label
+    if (this.input.isDown) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(this.input.x - 30, this.input.y + 14, 60, 18);
+      ctx.strokeStyle = '#192238';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(this.input.x - 30, this.input.y + 14, 60, 18);
+      ctx.fillStyle = '#192238';
+      ctx.font = 'bold 8px "Silkscreen", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SCRATCH', this.input.x, this.input.y + 26);
+    }
+    Placeholders.drawPixelPaw(ctx, this.input.x, this.input.y, 24, this.input.isDown);
     ctx.restore();
-
-    // 4. Cursor Paw
-    Placeholders.drawPaw(ctx, this.input.x, this.input.y, 22, this.input.isDown);
   }
 }
 
@@ -938,117 +1144,203 @@ class Level3_FindHiddenCat {
   }
 
   render(ctx, frameTime) {
-    // 1. Level Header / Round Indicator
-    ctx.save();
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 15px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`ROUND ${this.currentRound} / ${CONFIG.LEVEL_3.totalRounds}`, CONFIG.GENERAL.canvasWidth / 2, 42);
+    // ==========================================
+    // LEVEL 3: RETRO ARCADE CRT STATIC FLUX (MATCHING SCREENSHOT)
+    // ==========================================
 
-    // Score pills
-    const pillSpacing = 24;
-    const pillStartX = CONFIG.GENERAL.canvasWidth / 2 - pillSpacing;
-    for (let r = 0; r < 3; r++) {
-      const px = pillStartX + r * pillSpacing;
-      ctx.beginPath();
-      ctx.arc(px, 54, 4, 0, Math.PI * 2);
-      if (r < this.currentRound - 1) {
-        ctx.fillStyle = '#22c55e'; // completed
-      } else if (r === this.currentRound - 1) {
-        ctx.fillStyle = '#38bdf8'; // active
-      } else {
-        ctx.fillStyle = '#334155'; // upcoming
-      }
-      ctx.fill();
+    // 1. Warm Cream Paper Canvas Background
+    ctx.save();
+    ctx.fillStyle = '#fbf7ee';
+    ctx.fillRect(0, 0, 960, 540);
+
+    // Subtle micro-grid
+    ctx.strokeStyle = 'rgba(25, 34, 56, 0.06)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 960; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 540); ctx.stroke();
     }
-    ctx.restore();
+    for (let y = 0; y < 540; y += 32) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(960, y); ctx.stroke();
+    }
 
-    // 2. Noise Canvas Box (360 x 300 px centered)
-    ctx.save();
-    const nx = this.noiseX;
-    const ny = this.noiseY;
-    const nw = this.noiseW;
-    const nh = this.noiseH;
+    // 2. In-Canvas Top Status Ribbon
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 960, 32);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 0, 960, 32);
 
-    // Outer glow border
-    ctx.fillStyle = '#000000'; // Black background
-    ctx.fillRect(nx, ny, nw, nh);
+    ctx.fillStyle = '#16a34a';
+    ctx.beginPath();
+    ctx.arc(24, 16, 5, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = '#38bdf8';
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 11px "Silkscreen", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`STATUS: OPTICAL FLUX CALIBRATED   ROUND: ${this.currentRound} / ${CONFIG.LEVEL_3.totalRounds}`, 38, 20);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px "Space Mono", monospace';
+    ctx.fillText('SUB-GOAL: 2 / 3 IDENTIFIED', 936, 20);
+
+    // 3. Centered Retro CRT Monitor Chassis
+    const crtW = 390;
+    const crtH = 320;
+    const crtX = (960 - crtW) / 2;
+    const crtY = 40;
+
+    // Chassis hard shadow
+    ctx.fillStyle = '#192238';
+    ctx.fillRect(crtX + 4, crtY + 4, crtW, crtH);
+
+    // Chassis bezel
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(crtX, crtY, crtW, crtH);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(crtX, crtY, crtW, crtH);
+
+    // CRT Bezel Screws [+]
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('[+]', crtX + 10, crtY + 16);
+    ctx.fillText('[+]', crtX + crtW - 24, crtY + 16);
+    ctx.fillText('[+]', crtX + 10, crtY + crtH - 8);
+    ctx.fillText('[+]', crtX + crtW - 24, crtY + crtH - 8);
+
+    // CRT Top Camera Ribbon
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 9px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('● CAM_03 // KINETIC NOISE FLUX', 480, crtY + 16);
+
+    // 4. Inner Black CRT Screen (360 x 275 px)
+    const scrX = crtX + 15;
+    const scrY = crtY + 22;
+    const scrW = crtW - 30;
+    const scrH = crtH - 34;
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(scrX, scrY, scrW, scrH);
+    ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(56, 189, 248, 0.4)';
-    ctx.shadowBlur = 10;
-    ctx.strokeRect(nx, ny, nw, nh);
-    ctx.shadowBlur = 0;
+    ctx.strokeRect(scrX, scrY, scrW, scrH);
 
-    // Clip to noise box for dots
+    // Clip to screen for dots
     ctx.save();
     ctx.beginPath();
-    ctx.rect(nx, ny, nw, nh);
+    ctx.rect(scrX, scrY, scrW, scrH);
     ctx.clip();
 
-    // Render 900 uniform square dots
-    // (In any paused frame, all dots are identical white squares with zero outline or density difference!)
+    // Render 900 uniform dots
     ctx.fillStyle = CONFIG.LEVEL_3.dotColor;
     const dotSize = CONFIG.LEVEL_3.dotSize;
     for (let i = 0; i < this.dots.length; i++) {
       const d = this.dots[i];
-      ctx.fillRect(nx + d.x, ny + d.y, dotSize, dotSize);
+      ctx.fillRect(scrX + d.x, scrY + d.y, dotSize, dotSize);
     }
 
     // Reveal outline on round completion (0.5s feedback)
     if (this.state === 'REVEAL') {
-      ctx.translate(nx, ny);
+      ctx.translate(scrX, scrY);
       const outlineColor = this.revealIsCorrect ? '#22c55e' : '#ef4444';
       this.drawRevealedOutline(ctx, this.currentShape, outlineColor);
 
-      // Feedback banner
-      ctx.fillStyle = this.revealIsCorrect ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)';
-      ctx.fillRect(0, nh / 2 - 26, nw, 52);
+      // Feedback Banner
+      ctx.fillStyle = this.revealIsCorrect ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+      ctx.fillRect(0, scrH / 2 - 26, scrW, 52);
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px "Space Grotesk", sans-serif';
+      ctx.font = 'bold 20px "Silkscreen", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(this.revealIsCorrect ? 'PERFECT! 🐾' : 'MISSED! 😾', nw / 2, nh / 2 + 8);
+      ctx.fillText(this.revealIsCorrect ? 'PERFECT! 🐾' : 'MISSED! 😾', scrW / 2, scrH / 2 + 7);
     }
     ctx.restore(); // restore clip
-    ctx.restore();
 
-    // 3. 4 Big Answer Buttons Below Noise
-    ctx.save();
-    for (const btn of this.currentButtons) {
+    // CRT Screen Scanlines
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    for (let sy = scrY; sy < scrY + scrH; sy += 4) {
+      ctx.fillRect(scrX, sy, scrW, 1.5);
+    }
+
+    // 5. Ticker Box Below CRT Monitor
+    const tickY = crtY + crtH + 6;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(crtX, tickY, crtW, 26);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(crtX, tickY, crtW, 26);
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 9px "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[ SENSOR STATUS: TEMPORAL MOTION FLUX DETECTED ]', 480, tickY + 17);
+
+    // 6. 4 Large Answer Buttons (Matching Neobrutalist Arcade Style)
+    const btnY = 412;
+    const btnW = 190;
+    const btnH = 56;
+    const gap = 20;
+    const totalButtonsW = 4 * btnW + 3 * gap;
+    const btnStartX = (960 - totalButtonsW) / 2;
+
+    for (let i = 0; i < this.currentButtons.length; i++) {
+      const btn = this.currentButtons[i];
+      btn.x = btnStartX + i * (btnW + gap);
+      btn.y = btnY;
+      btn.width = btnW;
+      btn.height = btnH;
+
       const isHovered = (this.input.x >= btn.x && this.input.x <= btn.x + btn.width &&
                          this.input.y >= btn.y && this.input.y <= btn.y + btn.height);
       const isPressed = isHovered && this.input.isDown;
 
+      const offsetX = isPressed ? 2 : 0;
+      const offsetY = isPressed ? 2 : 0;
+      const shadowDist = isPressed ? 2 : 4;
+
+      // Hard drop shadow
+      ctx.fillStyle = '#192238';
+      ctx.fillRect(btn.x + shadowDist, btn.y + shadowDist, btn.width, btn.height);
+
       // Button background card
-      ctx.fillStyle = isPressed ? '#0369a1' : (isHovered ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)');
-      ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)';
-      ctx.lineWidth = isHovered ? 2 : 1.5;
+      ctx.fillStyle = isPressed ? '#fef08a' : (isHovered ? '#fef9c3' : '#ffffff');
+      ctx.fillRect(btn.x + offsetX, btn.y + offsetY, btn.width, btn.height);
 
-      if (isHovered) {
-        ctx.shadowColor = 'rgba(56, 189, 248, 0.35)';
-        ctx.shadowBlur = 10;
-      } else {
-        ctx.shadowBlur = 0;
-      }
+      ctx.strokeStyle = '#192238';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(btn.x + offsetX, btn.y + offsetY, btn.width, btn.height);
 
-      ctx.beginPath();
-      ctx.roundRect(btn.x, btn.y, btn.width, btn.height, 12);
-      ctx.fill();
-      ctx.stroke();
+      // Hotkey badge [1], [2], [3], [4]
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9px "Space Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`[${i + 1}]`, btn.x + offsetX + 10, btn.y + offsetY + 18);
 
-      // Button Label
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = isPressed ? '#ffffff' : (isHovered ? '#38bdf8' : '#f8fafc');
-      ctx.font = 'bold 16px "Space Grotesk", sans-serif';
+      // Label & Icon
+      ctx.fillStyle = '#192238';
+      ctx.font = 'bold 15px "Silkscreen", "Space Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(btn.label, btn.x + btn.width / 2, btn.y + btn.height / 2 + 6);
+      ctx.fillText(btn.label, btn.x + offsetX + btn.width / 2, btn.y + offsetY + 34);
     }
-    ctx.restore();
 
-    // 4. Paw Cursor
-    Placeholders.drawPaw(ctx, this.input.x, this.input.y, 22, this.input.isDown);
+    // 7. Bottom Proving Criteria Banner
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 495, 960, 45);
+    ctx.strokeStyle = '#192238';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(0, 495, 960, 45);
+
+    ctx.fillStyle = '#192238';
+    ctx.font = 'bold 10px "Silkscreen", "Space Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('[ PROVING CRITERIA: IDENTIFY 2 OF 3 KINETIC SILHOUETTES IN STATIC NOISE ]', 480, 522);
+
+    // 8. Paw Cursor
+    Placeholders.drawPixelPaw(ctx, this.input.x, this.input.y, 24, this.input.isDown);
+    ctx.restore();
   }
 }
 

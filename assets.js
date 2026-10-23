@@ -301,274 +301,364 @@ function playLevelStart() {
 // ==========================================
 
 const Placeholders = {
-  // Draw the Paw Cursor / Trail
-  drawPaw(ctx, x, y, radius = 20, isDown = false) {
+  // ==========================================
+  // RETRO PIXEL ART ASSET RENDERERS (MATCHING SCREENSHOT AESTHETICS)
+  // ==========================================
+
+  // Draw Chunky Pixel Art Orange Tabby Cat (Level 2 & ID Badge)
+  drawPixelTabbyCat(ctx, x, y, width = 360, height = 240, mood = 'content', frameTime = 0) {
     ctx.save();
     ctx.translate(x, y);
 
-    // Glow effect if pressing
-    if (isDown) {
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 12;
+    // Pixel grid scaling (28 cols x 22 rows)
+    const cols = 28;
+    const rows = 22;
+    const px = Math.floor(Math.min(width / cols, height / rows));
+    
+    // Center within bounding box
+    const offsetX = Math.floor((width - cols * px) / 2);
+    const offsetY = Math.floor((height - rows * px) / 2);
+    ctx.translate(offsetX, offsetY);
+
+    // Animations
+    const breath = mood === 'content' ? (Math.sin(frameTime * 0.004) > 0 ? 1 : 0) : 0;
+    const tailWag = mood === 'content' ? Math.round(Math.sin(frameTime * 0.006) * 1.5) :
+                    mood === 'annoyed' ? Math.round(Math.sin(frameTime * 0.018) * 2.5) : 0;
+
+    // Palette
+    const cNavy = '#192238';      // Dark border
+    const cOrange = '#f97316';    // Body orange
+    const cStripe = '#9a3412';    // Rust tabby stripes
+    const cWhite = '#ffffff';     // White bib/cheeks/paws
+    const cPink = '#f472b6';      // Nose & inner ears
+    const cPinkInner = '#fda4af';
+    const cEyeYellow = '#facc15';
+
+    // Helper: draw pixel block
+    const dot = (col, row, color, w = 1, h = 1) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(col * px, row * px, w * px, h * px);
+    };
+
+    // --- 1. DROP SHADOW ---
+    ctx.fillStyle = 'rgba(25, 34, 56, 0.2)';
+    ctx.fillRect(4 * px, 19 * px, 20 * px, 2 * px);
+    ctx.fillRect(6 * px, 20 * px, 16 * px, 1 * px);
+
+    // --- 2. TAIL (Right side, waving) ---
+    const tx = 21 + tailWag;
+    dot(20, 14, cOrange, 2, 4);
+    dot(tx, 10, cOrange, 2, 4);
+    dot(tx + 1, 7, cOrange, 2, 3);
+    dot(tx + 2, 5, cStripe, 2, 2); // Tail tip dark stripe
+    dot(tx + 1, 4, cStripe, 2, 1);
+    // Tail borders
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(20 * px, 14 * px, 2 * px, 4 * px);
+    ctx.strokeRect(tx * px, 10 * px, 2 * px, 4 * px);
+    ctx.strokeRect((tx + 1) * px, 7 * px, 2 * px, 3 * px);
+    ctx.strokeRect((tx + 2) * px, 5 * px, 2 * px, 2 * px);
+
+    // --- 3. MAIN BODY & LEGS ---
+    dot(6, 11, cOrange, 15, 7);
+    dot(5, 13, cOrange, 17, 5);
+
+    // Tabby vertical stripes on body
+    dot(11, 11, cStripe, 1, 5);
+    dot(14, 11, cStripe, 1, 6);
+    dot(17, 11, cStripe, 1, 6);
+    dot(19, 12, cStripe, 1, 5);
+
+    // White belly trap zone (cols 9 to 14, rows 14 to 17)
+    dot(9, 14, cWhite, 6, 3);
+    if (mood === 'annoyed') {
+      dot(9, 14, '#fecdd3', 6, 3);
     }
 
-    // Main pad
-    ctx.fillStyle = isDown ? '#f59e0b' : '#fbbf24';
-    ctx.beginPath();
-    ctx.ellipse(0, 4, radius * 0.7, radius * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Paws (bottom)
+    dot(5, 18, cWhite, 3, 2);
+    dot(10, 18, cWhite, 3, 2);
+    dot(15, 18, cWhite, 3, 2);
+    dot(19, 18, cWhite, 3, 2);
 
-    // 4 cute toe beans
-    const toeAngles = [-0.65, -0.22, 0.22, 0.65];
-    const toeDist = radius * 0.85;
-    ctx.fillStyle = isDown ? '#d97706' : '#f59e0b';
-    toeAngles.forEach(ang => {
-      const tx = Math.sin(ang) * toeDist;
-      const ty = -Math.cos(ang) * toeDist * 0.8;
-      ctx.beginPath();
-      ctx.ellipse(tx, ty, radius * 0.28, radius * 0.32, ang * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    // Body outer border outline
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(6 * px, 11 * px, 15 * px, 7 * px);
+    ctx.strokeRect(5 * px, 18 * px, 3 * px, 2 * px);
+    ctx.strokeRect(10 * px, 18 * px, 3 * px, 2 * px);
+    ctx.strokeRect(15 * px, 18 * px, 3 * px, 2 * px);
+    ctx.strokeRect(19 * px, 18 * px, 3 * px, 2 * px);
+
+    // --- 4. HEAD (Rows 4 to 12, Cols 6 to 18, with breathing bob) ---
+    const hy = breath;
+    
+    // Head main block
+    dot(6, 5 + hy, cOrange, 12, 7);
+    dot(5, 6 + hy, cOrange, 14, 5);
+
+    // Left Ear
+    dot(6, 2 + hy, cOrange, 3, 3);
+    dot(7, 1 + hy, cOrange, 2, 2);
+    dot(7, 0 + hy, cOrange, 1, 1);
+    dot(7, 2 + hy, cPinkInner, 1, 2); // Pink inner ear
+
+    // Right Ear
+    dot(15, 2 + hy, cOrange, 3, 3);
+    dot(15, 1 + hy, cOrange, 2, 2);
+    dot(16, 0 + hy, cOrange, 1, 1);
+    dot(16, 2 + hy, cPinkInner, 1, 2); // Pink inner ear
+
+    // Ear outlines
+    ctx.strokeRect(6 * px, (2 + hy) * px, 3 * px, 3 * px);
+    ctx.strokeRect(7 * px, (0 + hy) * px, 2 * px, 2 * px);
+    ctx.strokeRect(15 * px, (2 + hy) * px, 3 * px, 3 * px);
+    ctx.strokeRect(15 * px, (0 + hy) * px, 2 * px, 2 * px);
+
+    // Tabby forehead stripes
+    dot(9, 5 + hy, cStripe, 1, 3);
+    dot(11, 4 + hy, cStripe, 2, 4);
+    dot(14, 5 + hy, cStripe, 1, 3);
+
+    // Cheeks & Muzzle (White)
+    dot(9, 9 + hy, cWhite, 6, 2);
+    dot(10, 8 + hy, cWhite, 4, 1);
+
+    // Nose
+    dot(11, 8 + hy, cPink, 2, 1);
+
+    // --- 5. EYES BASED ON MOOD ---
+    if (mood === 'content') {
+      // Blissful curved eyes (^_^)
+      dot(7, 7 + hy, cNavy, 3, 1);
+      dot(7, 6 + hy, cNavy, 1, 1);
+      dot(9, 6 + hy, cNavy, 1, 1);
+
+      dot(14, 7 + hy, cNavy, 3, 1);
+      dot(14, 6 + hy, cNavy, 1, 1);
+      dot(16, 6 + hy, cNavy, 1, 1);
+
+      // Pink cheek blush
+      dot(5, 8 + hy, '#fda4af', 2, 1);
+      dot(17, 8 + hy, '#fda4af', 2, 1);
+    } else if (mood === 'annoyed') {
+      // Angry slit eyes (>_<)
+      dot(7, 6 + hy, cNavy, 1, 1);
+      dot(8, 7 + hy, cNavy, 2, 1);
+      dot(7, 8 + hy, cNavy, 1, 1);
+
+      dot(16, 6 + hy, cNavy, 1, 1);
+      dot(14, 7 + hy, cNavy, 2, 1);
+      dot(16, 8 + hy, cNavy, 1, 1);
+
+      // Angry forehead mark
+      ctx.fillStyle = '#ef4444';
+      ctx.font = `bold ${px * 2.5}px sans-serif`;
+      ctx.fillText('💢', 17 * px, (5 + hy) * px);
+    } else {
+      // Neutral curious cat eyes
+      dot(7, 6 + hy, cEyeYellow, 2, 2);
+      dot(8, 6 + hy, cNavy, 1, 2);
+
+      dot(15, 6 + hy, cEyeYellow, 2, 2);
+      dot(15, 6 + hy, cNavy, 1, 2);
+    }
+
+    // Whiskers
+    dot(2, 8 + hy, cNavy, 3, 1);
+    dot(2, 10 + hy, cNavy, 3, 1);
+    dot(19, 8 + hy, cNavy, 3, 1);
+    dot(19, 10 + hy, cNavy, 3, 1);
+
+    // Head border
+    ctx.strokeRect(5 * px, (5 + hy) * px, 14 * px, 7 * px);
 
     ctx.restore();
   },
 
-  // Draw the Fish (Goal)
-  drawFish(ctx, x, y, radius = 28, angle = 0, isHovered = false) {
+  // Draw Pixel Robot Bouncer (For Start Screen ID Badge & Header)
+  drawPixelRobotBouncer(ctx, x, y, width = 120, height = 140, frameTime = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    const cols = 20;
+    const rows = 24;
+    const px = Math.floor(Math.min(width / cols, height / rows));
+    const offsetX = Math.floor((width - cols * px) / 2);
+    const offsetY = Math.floor((height - rows * px) / 2);
+    ctx.translate(offsetX, offsetY);
+
+    const cNavy = '#192238';
+    const cMetal = '#cbd5e1';
+    const cMetalDark = '#94a3b8';
+    const cVisor = '#1e293b';
+    const cEyeBlue = '#38bdf8';
+    const cBadge = '#f59e0b';
+    const cRed = '#ef4444';
+
+    const dot = (col, row, color, w = 1, h = 1) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(col * px, row * px, w * px, h * px);
+    };
+
+    // Antenna
+    dot(9, 1, cRed, 2, 2);
+    dot(9, 3, cMetalDark, 2, 3);
+
+    // Antenna blinking LED
+    if (Math.sin(frameTime * 0.008) > 0) {
+      dot(8, 0, '#fca5a5', 4, 1);
+      dot(8, 1, '#fca5a5', 1, 2);
+      dot(11, 1, '#fca5a5', 1, 2);
+    }
+
+    // Ears / Bolts
+    dot(2, 9, cMetalDark, 2, 3);
+    dot(16, 9, cMetalDark, 2, 3);
+
+    // Head Box
+    dot(4, 6, cMetal, 12, 9);
+    // Visor
+    dot(5, 8, cVisor, 10, 4);
+    // Glowing Blue Eyes
+    dot(7, 9, cEyeBlue, 2, 2);
+    dot(11, 9, cEyeBlue, 2, 2);
+
+    // Mouth / Grille
+    dot(7, 13, cVisor, 6, 1);
+
+    // Body
+    dot(3, 16, cMetal, 14, 7);
+    // Chest badge "CAPT"
+    dot(6, 18, cBadge, 8, 3);
+    dot(7, 19, cNavy, 6, 1);
+
+    // Head and body outlines
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4 * px, 6 * px, 12 * px, 9 * px);
+    ctx.strokeRect(5 * px, 8 * px, 10 * px, 4 * px);
+    ctx.strokeRect(3 * px, 16 * px, 14 * px, 7 * px);
+    ctx.strokeRect(9 * px, 3 * px, 2 * px, 3 * px);
+    ctx.strokeRect(9 * px, 1 * px, 2 * px, 2 * px);
+
+    ctx.restore();
+  },
+
+  // Draw Pixel Gold Fish (Goal icon)
+  drawPixelFish(ctx, x, y, size = 36, angle = 0) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    // Golden glow
-    ctx.shadowColor = '#38bdf8';
-    ctx.shadowBlur = isHovered ? 20 : 10;
+    const px = Math.floor(size / 10);
+    const cNavy = '#192238';
+    const cGold = '#f59e0b';
+    const cGoldLight = '#fde047';
+    const cEye = '#ffffff';
 
-    // Fish body
-    ctx.fillStyle = '#38bdf8';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, radius, radius * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const dot = (col, row, color, w = 1, h = 1) => {
+      ctx.fillStyle = color;
+      ctx.fillRect((col - 5) * px, (row - 4) * px, w * px, h * px);
+    };
 
-    // Tail fin
-    ctx.fillStyle = '#0284c7';
-    ctx.beginPath();
-    ctx.moveTo(radius * 0.7, 0);
-    ctx.lineTo(radius * 1.45, -radius * 0.6);
-    ctx.lineTo(radius * 1.25, 0);
-    ctx.lineTo(radius * 1.45, radius * 0.6);
-    ctx.closePath();
-    ctx.fill();
+    // Body
+    dot(2, 2, cGold, 5, 4);
+    dot(1, 3, cGold, 7, 2);
+    dot(3, 3, cGoldLight, 3, 2);
+
+    // Tail Fin
+    dot(7, 1, cGold, 2, 2);
+    dot(8, 2, cGold, 2, 4);
+    dot(7, 5, cGold, 2, 2);
 
     // Eye
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(-radius * 0.45, -radius * 0.15, radius * 0.18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(-radius * 0.48, -radius * 0.15, radius * 0.09, 0, Math.PI * 2);
-    ctx.fill();
+    dot(2, 3, cEye, 1, 1);
+    dot(2, 3, cNavy, 1, 1);
 
-    // Cute gills and smile
-    ctx.strokeStyle = '#0369a1';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(-radius * 0.1, 0, radius * 0.28, -Math.PI * 0.4, Math.PI * 0.4);
-    ctx.stroke();
+    // Border
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect((2 - 5) * px, (2 - 4) * px, 5 * px, 4 * px);
+    ctx.strokeRect((7 - 5) * px, (1 - 4) * px, 3 * px, 6 * px);
 
     ctx.restore();
   },
 
-  // Draw the Big Cat (Level 2: Petting, facing right: head on left, tail on right)
-  drawPettingCat(ctx, x, y, width = 480, height = 260, mood = 'neutral', frameTime = 0) {
+  // Draw Pixel Paw Icon
+  drawPixelPaw(ctx, x, y, size = 28, isDown = false) {
     ctx.save();
     ctx.translate(x, y);
 
-    // Subtle breathing animation
-    const breathOffset = Math.sin(frameTime * 0.003) * 3;
+    const px = Math.max(2, Math.floor(size / 8));
+    const cNavy = '#192238';
+    const cPad = isDown ? '#ea580c' : '#f59e0b';
+    const cPadLight = isDown ? '#f97316' : '#fbbf24';
 
-    // Body Color based on mood
-    let bodyColor = '#f97316';       // Ginger orange
-    let bellyColor = '#ffedd5';      // Soft cream
-    let shadowColor = 'rgba(0,0,0,0.2)';
+    const dot = (col, row, color, w = 1, h = 1) => {
+      ctx.fillStyle = color;
+      ctx.fillRect((col - 4) * px, (row - 4) * px, w * px, h * px);
+    };
 
-    // Drop shadow
-    ctx.fillStyle = shadowColor;
-    ctx.beginPath();
-    ctx.ellipse(width * 0.5, height * 0.85, width * 0.46, 26, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Main Pad
+    dot(2, 3, cPad, 4, 3);
+    dot(3, 2, cPadLight, 2, 1);
+    dot(2, 6, cPad, 4, 1);
 
-    // --- TAIL (on right) ---
-    ctx.lineWidth = 26;
-    ctx.strokeStyle = bodyColor;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    const tailWave = mood === 'content' ? Math.sin(frameTime * 0.006) * 16 :
-                     mood === 'annoyed' ? Math.sin(frameTime * 0.015) * 32 : Math.sin(frameTime * 0.002) * 8;
-    ctx.moveTo(width * 0.78, height * 0.58);
-    ctx.bezierCurveTo(width * 0.88, height * 0.52, width * 0.94 + tailWave, height * 0.35, width * 0.88 + tailWave * 1.3, height * 0.18);
-    ctx.stroke();
+    // Toe Beans
+    dot(0, 2, cPad, 1, 2);
+    dot(2, 0, cPad, 2, 1);
+    dot(5, 0, cPad, 2, 1);
+    dot(7, 2, cPad, 1, 2);
 
-    // --- MAIN BODY (facing right, head on left) ---
-    // Body is an elongated rounded loaf
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.ellipse(width * 0.54, height * 0.58 + breathOffset * 0.5, width * 0.34, height * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // --- BELLY (TRAP ZONE: lower-middle) ---
-    ctx.fillStyle = bellyColor;
-    ctx.beginPath();
-    ctx.ellipse(width * 0.52, height * 0.66 + breathOffset * 0.4, width * 0.24, height * 0.16, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Belly subtle indicator / stripes
-    ctx.strokeStyle = 'rgba(234, 88, 12, 0.4)';
-    ctx.lineWidth = 4;
-    [-0.1, 0, 0.1].forEach(offset => {
-      ctx.beginPath();
-      ctx.moveTo(width * (0.52 + offset) - 15, height * 0.66);
-      ctx.lineTo(width * (0.52 + offset) + 15, height * 0.66);
-      ctx.stroke();
-    });
-
-    // --- HEAD (on left) ---
-    const headX = width * 0.24;
-    const headY = height * 0.46 + breathOffset;
-    const headR = 74;
-
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.arc(headX, headY, headR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // --- EARS ---
-    // Left ear (behind)
-    ctx.beginPath();
-    ctx.moveTo(headX - headR * 0.6, headY - headR * 0.65);
-    ctx.lineTo(headX - headR * 0.85, headY - headR * 1.25);
-    ctx.lineTo(headX - headR * 0.2, headY - headR * 0.85);
-    ctx.closePath();
-    ctx.fillStyle = bodyColor;
-    ctx.fill();
-    ctx.fillStyle = '#fda4af';
-    ctx.beginPath();
-    ctx.moveTo(headX - headR * 0.55, headY - headR * 0.7);
-    ctx.lineTo(headX - headR * 0.75, headY - headR * 1.15);
-    ctx.lineTo(headX - headR * 0.25, headY - headR * 0.85);
-    ctx.closePath();
-    ctx.fill();
-
-    // Right ear (front)
-    ctx.beginPath();
-    ctx.moveTo(headX + headR * 0.05, headY - headR * 0.85);
-    ctx.lineTo(headX + headR * 0.45, headY - headR * 1.3);
-    ctx.lineTo(headX + headR * 0.7, headY - headR * 0.65);
-    ctx.closePath();
-    ctx.fillStyle = bodyColor;
-    ctx.fill();
-    ctx.fillStyle = '#fda4af';
-    ctx.beginPath();
-    ctx.moveTo(headX + headR * 0.12, headY - headR * 0.85);
-    ctx.lineTo(headX + headR * 0.42, headY - headR * 1.2);
-    ctx.lineTo(headX + headR * 0.62, headY - headR * 0.7);
-    ctx.closePath();
-    ctx.fill();
-
-    // --- FACE & EXPRESSION BASED ON MOOD ---
-    const eyeY = headY - 10;
-    if (mood === 'content') {
-      // Blissful curved eyes (purring ^_^)
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(headX - 22, eyeY, 14, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(headX + 22, eyeY, 14, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-
-      // Cute blush
-      ctx.fillStyle = 'rgba(244, 63, 94, 0.4)';
-      ctx.beginPath();
-      ctx.arc(headX - 38, eyeY + 16, 12, 0, Math.PI * 2);
-      ctx.arc(headX + 38, eyeY + 16, 12, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (mood === 'annoyed') {
-      // Angled angry slit eyes (>_<)
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(headX - 35, eyeY - 8);
-      ctx.lineTo(headX - 10, eyeY + 4);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(headX + 35, eyeY - 8);
-      ctx.lineTo(headX + 10, eyeY + 4);
-      ctx.stroke();
-    } else {
-      // Neutral resting cat eyes
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.ellipse(headX - 22, eyeY, 12, 14, 0, 0, Math.PI * 2);
-      ctx.ellipse(headX + 22, eyeY, 12, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.ellipse(headX - 22, eyeY, 4, 12, 0, 0, Math.PI * 2);
-      ctx.ellipse(headX + 22, eyeY, 4, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Nose (pink triangle)
-    ctx.fillStyle = '#fb7185';
-    ctx.beginPath();
-    ctx.moveTo(headX, headY + 14);
-    ctx.lineTo(headX - 7, headY + 7);
-    ctx.lineTo(headX + 7, headY + 7);
-    ctx.closePath();
-    ctx.fill();
-
-    // Mouth
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    if (mood === 'annoyed') {
-      ctx.arc(headX, headY + 28, 12, Math.PI * 1.1, Math.PI * 1.9); // Frown / hiss open mouth
-    } else {
-      ctx.arc(headX - 8, headY + 20, 8, 0, Math.PI * 0.9);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(headX + 8, headY + 20, 8, Math.PI * 0.1, Math.PI);
-    }
-    ctx.stroke();
-
-    // Whiskers
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    [-6, 6].forEach(dy => {
-      // Left whiskers
-      ctx.beginPath();
-      ctx.moveTo(headX - 35, headY + 18 + dy);
-      ctx.lineTo(headX - 75, headY + 16 + dy * 2);
-      ctx.stroke();
-      // Right whiskers
-      ctx.beginPath();
-      ctx.moveTo(headX + 35, headY + 18 + dy);
-      ctx.lineTo(headX + 75, headY + 16 + dy * 2);
-      ctx.stroke();
-    });
-
-    // Paws resting in front
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.ellipse(width * 0.32, height * 0.82, 28, 16, 0, 0, Math.PI * 2);
-    ctx.ellipse(width * 0.44, height * 0.82, 28, 16, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Border
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect((2 - 4) * px, (3 - 4) * px, 4 * px, 3 * px);
 
     ctx.restore();
+  },
+
+  // Draw Pixel Heart
+  drawPixelHeart(ctx, x, y, size = 16, color = '#f43f5e') {
+    ctx.save();
+    ctx.translate(x, y);
+
+    const px = Math.max(1, Math.floor(size / 7));
+    const cNavy = '#192238';
+
+    const dot = (col, row, clr, w = 1, h = 1) => {
+      ctx.fillStyle = clr;
+      ctx.fillRect((col - 3) * px, (row - 3) * px, w * px, h * px);
+    };
+
+    dot(1, 0, color, 2, 1);
+    dot(4, 0, color, 2, 1);
+    dot(0, 1, color, 7, 2);
+    dot(1, 3, color, 5, 1);
+    dot(2, 4, color, 3, 1);
+    dot(3, 5, color, 1, 1);
+
+    // Outline
+    ctx.strokeStyle = cNavy;
+    ctx.lineWidth = 1;
+    ctx.strokeRect((0 - 3) * px, (1 - 3) * px, 7 * px, 2 * px);
+
+    ctx.restore();
+  },
+
+  // Fallback / legacy vector wrappers (calls pixel art for consistency)
+  drawPaw(ctx, x, y, radius = 20, isDown = false) {
+    this.drawPixelPaw(ctx, x, y, radius * 1.5, isDown);
+  },
+
+  drawFish(ctx, x, y, radius = 28, angle = 0, isHovered = false) {
+    this.drawPixelFish(ctx, x, y, radius * 1.6, angle);
+  },
+
+  drawPettingCat(ctx, x, y, width = 480, height = 260, mood = 'neutral', frameTime = 0) {
+    this.drawPixelTabbyCat(ctx, x, y, width, height, mood, frameTime);
   },
 
 

@@ -1,6 +1,7 @@
 /**
  * CAPT-CHA: Prove You're Human (Cat Edition)
  * Main Game Controller & State Machine
+ * Retro Arcade Neobrutalist Theme Coordination
  */
 
 class Game {
@@ -8,7 +9,7 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
 
-    // High-DPI Canvas Rendering
+    // High-DPI Canvas Resolution: 960 x 540 virtual
     this.setupCanvasResolution();
 
     // Unified Input Manager
@@ -24,31 +25,41 @@ class Game {
     this.levelMetadata = [
       {
         id: 1,
+        badge: "TEST 01",
         name: "STEADY PAW",
-        instruction: "Guide the paw to the fish. (Organic shakiness & wall bumps expected!)",
+        instruction: "Guide the paw to the fish without touching the walls.",
+        objective: "OBJECTIVE: GUIDE THE PAW TO THE GOLD FISH WITHOUT CLIPPING",
+        goalTag: "ROUNDS",
         introDialogue: CONFIG.CAPT_CHA_LINES.level1Intro
       },
       {
         id: 2,
+        badge: "LEVEL 02",
         name: "PET THE CAT",
         instruction: "Pet the cat until it purrs. Gently.",
+        objective: "PROTOCOL: TACTILE VERIFICATION",
+        goalTag: "SUB-GOAL: 100 PURR",
         introDialogue: CONFIG.CAPT_CHA_LINES.level2Intro
       },
       {
         id: 3,
+        badge: "LEVEL 03",
         name: "FIND THE HIDDEN CAT",
         instruction: "A cat is hiding in the static. Find it.",
+        objective: "PROTOCOL: OPTICAL STATIC DISCRIMINATION",
+        goalTag: "SUB-GOAL: 2/3 IDENTIFIED",
         introDialogue: "Look closely. Or don't. I'm a robot."
       }
     ];
 
     // State Variables
-    this.gameState = 'START'; // 'START', 'INTRO', 'PLAYING', 'FLASH', 'GAMEOVER', 'CERTIFICATE'
+    this.gameState = 'START'; // 'START', 'INTRO', 'PLAYING', 'FLASH', 'GAMEOVER', 'CERTIFICATE', 'PAUSED'
     this.currentLevelIndex = 0;
     this.lives = CONFIG.GENERAL.maxLives;
     this.levelTimeRemaining = CONFIG.GENERAL.levelTimeLimitSeconds;
     this.levelScores = [];
     this.isBotMode = false;
+    this.isPaused = false;
 
     // Intro Countdown
     this.countdownTimer = 3;
@@ -68,10 +79,10 @@ class Game {
     // Initial Welcome Dialogue
     this.setDialogue(CONFIG.CAPT_CHA_LINES.welcome);
     this.renderHud();
+    this.drawBadgePreview();
   }
 
   setupCanvasResolution() {
-    // Virtual game canvas resolution: 960 x 540
     this.canvas.width = CONFIG.GENERAL.canvasWidth;
     this.canvas.height = CONFIG.GENERAL.canvasHeight;
   }
@@ -79,27 +90,35 @@ class Game {
   cacheDomElements() {
     this.ui = {
       dialogueText: document.getElementById('dialogueText'),
-      heartsContainer: document.getElementById('heartsContainer'),
-      levelPill: document.getElementById('levelPill'),
+      livesHearts: document.getElementById('livesHearts'),
+      creditsVal: document.getElementById('creditsVal'),
       timerBar: document.getElementById('timerBar'),
       timerText: document.getElementById('timerText'),
-      wobbleFill: document.getElementById('wobbleFill'),
-      wobbleText: document.getElementById('wobbleText'),
       
+      // Subheader elements
+      subLevelBadge: document.getElementById('subLevelBadge'),
+      subLevelTitle: document.getElementById('subLevelTitle'),
+      subObjectiveText: document.getElementById('subObjectiveText'),
+      subGoalTag: document.getElementById('subGoalTag'),
+
       // Screens / Modals
       startScreen: document.getElementById('startScreen'),
       introCard: document.getElementById('introCard'),
+      introBadge: document.getElementById('introBadge'),
       introLevelName: document.getElementById('introLevelName'),
       introInstruction: document.getElementById('introInstruction'),
       introCountdown: document.getElementById('introCountdown'),
-      
+      badgeCanvas: document.getElementById('badgePreviewCanvas'),
+      progBlocksTrack: document.getElementById('progBlocksTrack'),
+      progIndexText: document.getElementById('progIndexText'),
+
       flashOverlay: document.getElementById('flashOverlay'),
       flashBadge: document.getElementById('flashBadge'),
       flashReason: document.getElementById('flashReason'),
-      
+
       gameOverScreen: document.getElementById('gameOverScreen'),
       gameOverReason: document.getElementById('gameOverReason'),
-      
+
       certificateScreen: document.getElementById('certificateScreen'),
       certScoreVal: document.getElementById('certScoreVal'),
       certL1Score: document.getElementById('certL1Score'),
@@ -107,15 +126,25 @@ class Game {
       certL3Score: document.getElementById('certL3Score'),
 
       botModal: document.getElementById('botModal'),
-      botSummaryList: document.getElementById('botSummaryList'),
+
+      // Stage Tabs & Calculation Meter
+      tabStage1: document.getElementById('tabStage1'),
+      tabStage2: document.getElementById('tabStage2'),
+      tabStage3: document.getElementById('tabStage3'),
+      tabStageVerify: document.getElementById('tabStageVerify'),
+      meterBlocks: document.getElementById('meterBlocks'),
+      meterPctText: document.getElementById('meterPctText'),
 
       // Buttons
       btnStartHuman: document.getElementById('btnStartHuman'),
       btnRunBot: document.getElementById('btnRunBot'),
+      btnStartNow: document.getElementById('btnStartNow'),
       btnGameOverRestart: document.getElementById('btnGameOverRestart'),
       btnCertRestart: document.getElementById('btnCertRestart'),
       btnBotTryHuman: document.getElementById('btnBotTryHuman'),
-      btnSoundToggle: document.getElementById('btnSoundToggle')
+      btnSoundToggle: document.getElementById('btnSoundToggle'),
+      btnPause: document.getElementById('btnPause'),
+      btnRestartHeader: document.getElementById('btnRestartHeader')
     };
   }
 
@@ -128,6 +157,14 @@ class Game {
     this.ui.btnRunBot.addEventListener('click', () => {
       this.startBotDemo();
     });
+
+    if (this.ui.btnStartNow) {
+      this.ui.btnStartNow.addEventListener('click', () => {
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
+        this.ui.introCard.classList.add('hidden');
+        this.startLevelGameplay();
+      });
+    }
 
     this.ui.btnGameOverRestart.addEventListener('click', () => {
       this.restartGame();
@@ -145,9 +182,34 @@ class Game {
     if (this.ui.btnSoundToggle) {
       this.ui.btnSoundToggle.addEventListener('click', () => {
         assets.soundMuted = !assets.soundMuted;
-        this.ui.btnSoundToggle.textContent = assets.soundMuted ? '🔇 Audio Off' : '🔊 Audio On';
+        this.ui.btnSoundToggle.textContent = assets.soundMuted ? '🔇' : '🔊';
       });
     }
+
+    if (this.ui.btnPause) {
+      this.ui.btnPause.addEventListener('click', () => {
+        this.togglePause();
+      });
+    }
+
+    if (this.ui.btnRestartHeader) {
+      this.ui.btnRestartHeader.addEventListener('click', () => {
+        this.restartGame();
+      });
+    }
+
+    // Spacebar to start or commence
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        if (this.gameState === 'START') {
+          this.startFreshGame();
+        } else if (this.gameState === 'INTRO') {
+          if (this.countdownInterval) clearInterval(this.countdownInterval);
+          this.ui.introCard.classList.add('hidden');
+          this.startLevelGameplay();
+        }
+      }
+    });
 
     // Responsive Canvas resizing
     window.addEventListener('resize', () => {
@@ -155,9 +217,21 @@ class Game {
     });
   }
 
+  togglePause() {
+    if (this.gameState === 'PLAYING') {
+      this.gameState = 'PAUSED';
+      this.ui.btnPause.textContent = '▶';
+      this.setDialogue("SECURITY PAUSED. TAKE A BREATH, ORGANIC.");
+    } else if (this.gameState === 'PAUSED') {
+      this.gameState = 'PLAYING';
+      this.ui.btnPause.textContent = '⏸';
+      this.setDialogue("SECURITY RESUMED.");
+    }
+  }
+
   setDialogue(text) {
     if (this.ui.dialogueText) {
-      this.ui.dialogueText.textContent = text;
+      this.ui.dialogueText.textContent = text.startsWith('"') ? text : `"${text}"`;
     }
   }
 
@@ -196,9 +270,10 @@ class Game {
     this.currentLevel.reset();
     this.renderHud();
 
-    // Show Intro Card
-    this.ui.introLevelName.textContent = `LEVEL ${meta.id}: ${meta.name}`;
-    this.ui.introInstruction.textContent = meta.instruction;
+    // Show Retro Intro Card Modal
+    if (this.ui.introBadge) this.ui.introBadge.textContent = `[ ${meta.id} ]`;
+    if (this.ui.introLevelName) this.ui.introLevelName.textContent = meta.name;
+    if (this.ui.introInstruction) this.ui.introInstruction.textContent = meta.instruction;
     this.ui.introCard.classList.remove('hidden');
 
     this.countdownTimer = CONFIG.GENERAL.countdownSeconds;
@@ -222,19 +297,25 @@ class Game {
 
   startLevelGameplay() {
     this.gameState = 'PLAYING';
-    this.levelTimeRemaining = CONFIG.GENERAL.levelTimeLimitSeconds;
-    this.currentLevel.reset();
+    this.levelTimeRemaining = (this.currentLevelIndex === 2)
+      ? CONFIG.LEVEL_3.roundTimeLimitSeconds
+      : CONFIG.GENERAL.levelTimeLimitSeconds;
+    this.input.resetMetrics();
+    this.renderHud();
   }
 
   handleLevelResult(result) {
+    if (this.gameState === 'FLASH') return; // Debounce
     this.gameState = 'FLASH';
 
     if (result.success) {
-      // Level Passed!
       playPass();
-      this.setDialogue(CONFIG.CAPT_CHA_LINES.passLevel);
-      this.levelScores[this.currentLevelIndex] = result.score || 88;
-      this.showResultFlash(true, result.reason || "Human verified.");
+      this.levelScores[this.currentLevelIndex] = result.score || 90;
+      this.showResultFlash(true, result.reason || "Human clumsiness verified.");
+
+      if (this.currentLevelIndex === 0) this.setDialogue(CONFIG.CAPT_CHA_LINES.level1Pass);
+      else if (this.currentLevelIndex === 1) this.setDialogue(CONFIG.CAPT_CHA_LINES.level2Pass);
+      else this.setDialogue(CONFIG.CAPT_CHA_LINES.level3Pass);
 
       setTimeout(() => {
         this.hideResultFlash();
@@ -243,9 +324,9 @@ class Game {
         } else {
           this.showCertificateScreen();
         }
-      }, 2000);
+      }, 1800);
+
     } else {
-      // Level Failed!
       playFail();
       this.showResultFlash(false, result.reason || "Verification failed.");
 
@@ -269,14 +350,12 @@ class Game {
         this.hideResultFlash();
 
         if (this.isBotMode) {
-          // In Bot Mode, it automatically advances to demo next level
           if (this.currentLevelIndex < this.levels.length - 1) {
             this.startLevelIntro(this.currentLevelIndex + 1);
           } else {
             this.showBotRejectionSummary();
           }
         } else {
-          // Human Mode: Retry if lives > 0, else Game Over
           if (this.lives > 0) {
             this.startLevelIntro(this.currentLevelIndex);
           } else {
@@ -291,10 +370,10 @@ class Game {
     this.ui.flashOverlay.classList.remove('hidden');
     if (isPass) {
       this.ui.flashBadge.textContent = "PASS";
-      this.ui.flashBadge.className = "flash-badge pass";
+      this.ui.flashBadge.className = "flash-badge-retro pass";
     } else {
       this.ui.flashBadge.textContent = "FAIL";
-      this.ui.flashBadge.className = "flash-badge fail";
+      this.ui.flashBadge.className = "flash-badge-retro fail";
     }
     this.ui.flashReason.textContent = reasonText;
   }
@@ -340,10 +419,13 @@ class Game {
     this.currentLevelIndex = 0;
     this.levelScores = [];
     this.isBotMode = false;
+    this.isPaused = false;
+    if (this.ui.btnPause) this.ui.btnPause.textContent = '⏸';
     this.renderHud();
     this.setDialogue(CONFIG.CAPT_CHA_LINES.welcome);
     this.ui.startScreen.classList.remove('hidden');
     this.gameState = 'START';
+    this.drawBadgePreview();
   }
 
   hideAllOverlays() {
@@ -355,60 +437,123 @@ class Game {
     this.ui.botModal.classList.add('hidden');
   }
 
+  // Draw Robot Bouncer beside Cute Orange Tabby Cat on Start Screen ID Badge
+  drawBadgePreview() {
+    if (!this.ui.badgeCanvas) return;
+    const ctx = this.ui.badgeCanvas.getContext('2d');
+    const w = this.ui.badgeCanvas.width;
+    const h = this.ui.badgeCanvas.height;
+
+    ctx.fillStyle = '#fbf7ee';
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle background grid
+    ctx.strokeStyle = 'rgba(25, 34, 56, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 16) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 16) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // Robot Bouncer on left
+    Placeholders.drawPixelRobotBouncer(ctx, 14, 10, 95, 130, performance.now());
+
+    // Cute Tabby Cat on right
+    Placeholders.drawPixelTabbyCat(ctx, 115, 30, 125, 110, 'content', performance.now());
+  }
+
   // ==========================================
-  // HUD RENDERING
+  // HUD RENDERING (MATCHING SCREENSHOT METRICS)
   // ==========================================
   renderHud() {
-    // 1. Hearts (Lives)
-    let heartsHtml = '';
+    // 1. Lives Hearts
+    let heartsStr = '';
     for (let i = 0; i < CONFIG.GENERAL.maxLives; i++) {
-      if (i < this.lives) {
-        heartsHtml += '<span class="heart active">❤️</span>';
+      heartsStr += (i < this.lives) ? '❤️' : '🖤';
+    }
+    if (this.ui.livesHearts) {
+      this.ui.livesHearts.textContent = `${this.lives} ${heartsStr}`;
+    }
+
+    // 2. Credits
+    if (this.ui.creditsVal) {
+      this.ui.creditsVal.textContent = '02';
+    }
+
+    // 3. Subheader Bar Metadata
+    const meta = this.levelMetadata[this.currentLevelIndex] || this.levelMetadata[0];
+    if (this.ui.subLevelBadge) this.ui.subLevelBadge.textContent = meta.badge;
+    if (this.ui.subLevelTitle) this.ui.subLevelTitle.textContent = meta.name;
+    if (this.ui.subObjectiveText) this.ui.subObjectiveText.textContent = meta.objective;
+    if (this.ui.subGoalTag) this.ui.subGoalTag.textContent = meta.goalTag;
+
+    // 4. Timer Bar (Hazard Caution Stripes)
+    const timeLimit = (this.currentLevelIndex === 2)
+      ? CONFIG.LEVEL_3.roundTimeLimitSeconds
+      : CONFIG.GENERAL.levelTimeLimitSeconds;
+    const timerRatio = Math.max(0, this.levelTimeRemaining / timeLimit);
+    if (this.ui.timerBar) {
+      this.ui.timerBar.style.width = `${timerRatio * 100}%`;
+    }
+    if (this.ui.timerText) {
+      this.ui.timerText.textContent = `TIME REMAINING: ${this.levelTimeRemaining.toFixed(1)}s`;
+    }
+
+    // 5. Stage Navigation Tabs
+    const tabs = [this.ui.tabStage1, this.ui.tabStage2, this.ui.tabStage3, this.ui.tabStageVerify];
+    tabs.forEach((tab, idx) => {
+      if (!tab) return;
+      if (this.gameState === 'CERTIFICATE') {
+        tab.className = (idx === 3) ? 'stage-tab active' : 'stage-tab';
       } else {
-        heartsHtml += '<span class="heart lost">🖤</span>';
+        tab.className = (idx === this.currentLevelIndex) ? 'stage-tab active' : 'stage-tab';
       }
-    }
-    this.ui.heartsContainer.innerHTML = heartsHtml;
+    });
 
-    // 2. Level Pill
-    const lvlNum = this.currentLevelIndex + 1;
-    this.ui.levelPill.textContent = `TEST ${lvlNum} / 3`;
-
-    // 3. Timer Bar
-    const timerRatio = Math.max(0, this.levelTimeRemaining / CONFIG.GENERAL.levelTimeLimitSeconds);
-    this.ui.timerBar.style.width = `${timerRatio * 100}%`;
-    this.ui.timerText.textContent = `${Math.ceil(this.levelTimeRemaining)}s`;
-
-    if (timerRatio < 0.25) {
-      this.ui.timerBar.style.background = '#ef4444'; // Warning red
-    } else {
-      this.ui.timerBar.style.background = 'linear-gradient(90deg, #38bdf8, #818cf8)';
-    }
-
-    // 4. Human Wobble Meter
+    // 6. Humanity Verification Meter & Progress Blocks
+    const passedLevels = this.levelScores.filter(s => s != null).length;
     const wobble = this.input.getWobbleScore();
-    const wobblePct = Math.min(100, Math.round(wobble * 100));
-    this.ui.wobbleFill.style.width = `${wobblePct}%`;
-    this.ui.wobbleText.textContent = `Human Wobble: ${wobblePct}%`;
+    const biologicalPct = Math.min(100, Math.round(passedLevels * 30 + wobble * 10 + 5));
+
+    if (this.ui.meterPctText) {
+      this.ui.meterPctText.textContent = `${biologicalPct}% BIOLOGICAL`;
+    }
+
+    // Render 10 blocks in footer
+    if (this.ui.meterBlocks) {
+      const activeBlocks = Math.round((biologicalPct / 100) * 10);
+      let blkHtml = '';
+      for (let i = 0; i < 10; i++) {
+        blkHtml += `<div class="meter-blk ${i < activeBlocks ? 'on' : ''}"></div>`;
+      }
+      this.ui.meterBlocks.innerHTML = blkHtml;
+    }
+
+    // Render 10 blocks in Start Screen
+    if (this.ui.progBlocksTrack) {
+      const progCount = passedLevels * 3;
+      let progHtml = '';
+      for (let i = 0; i < 10; i++) {
+        progHtml += `<div class="prog-block ${i < progCount ? 'filled' : ''}"></div>`;
+      }
+      this.ui.progBlocksTrack.innerHTML = progHtml;
+    }
+    if (this.ui.progIndexText) {
+      this.ui.progIndexText.textContent = `${passedLevels * 3} / 10 BLOCKS PROVEN`;
+    }
   }
 
   // ==========================================
   // MAIN LOOP
   // ==========================================
   loop(currentTime) {
-    const dt = Math.min(0.1, (currentTime - this.lastFrameTime) / 1000); // delta in seconds
+    const dt = Math.min(0.1, (currentTime - this.lastFrameTime) / 1000);
     this.lastFrameTime = currentTime;
-
-    // Clear Canvas
-    this.ctx.fillStyle = '#0f172a'; // Deep cyber slate
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Subtle background grid
-    this.drawBackgroundGrid();
 
     // Game Logic Update
     if (this.gameState === 'PLAYING') {
-      // Countdown Level Timer
       this.levelTimeRemaining -= dt;
       if (this.levelTimeRemaining <= 0) {
         this.levelTimeRemaining = 0;
@@ -429,36 +574,18 @@ class Game {
     if (this.gameState === 'PLAYING' || this.gameState === 'FLASH' || this.gameState === 'INTRO') {
       this.currentLevel.render(this.ctx, currentTime);
     } else {
-      // Start / idle screen canvas animation: cute resting cat + wandering paw
-      Placeholders.drawPettingCat(this.ctx, 240, 150, 480, 260, 'content', currentTime);
-      Placeholders.drawPaw(this.ctx, this.input.x || 480, this.input.y || 270, 22, this.input.isDown);
+      // Start / idle screen canvas animation
+      this.ctx.fillStyle = '#fbf7ee';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      Placeholders.drawPixelTabbyCat(this.ctx, 240, 120, 480, 280, 'content', currentTime);
+      Placeholders.drawPixelPaw(this.ctx, this.input.x || 480, this.input.y || 270, 24, this.input.isDown);
+      this.drawBadgePreview();
     }
 
     // Update HUD
     this.renderHud();
 
     requestAnimationFrame((t) => this.loop(t));
-  }
-
-  drawBackgroundGrid() {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < this.canvas.width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, this.canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < this.canvas.height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(this.canvas.width, y);
-      ctx.stroke();
-    }
-    ctx.restore();
   }
 }
 

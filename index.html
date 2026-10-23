@@ -11,158 +11,217 @@
 
   <div class="app-container">
     
-    <!-- HEADER BAR -->
+    <!-- 1. TOP ARCADE HEADER BAR (MATCHING SCREENSHOT) -->
     <header class="header-bar">
-      <div class="logo-group">
-        <span class="logo-badge">VERIFY v1.0</span>
-        <h1 class="title-text">CAPT-CHA <span class="title-subtitle">Prove You're Human (Cat Edition)</span></h1>
+      <div class="header-left">
+        <div class="logo-badge">🛡️</div>
+        <div class="title-group">
+          <h1 class="title-text">CAPT-CHA: PROVE HUMAN</h1>
+          <div class="subtitle-text">SECURITY BOT v1.0 [STATUS: UNRESOLVED]</div>
+        </div>
       </div>
-      <div class="header-controls">
-        <button id="btnSoundToggle" class="btn-icon" title="Toggle Sound">🔊 Audio On</button>
+      <div class="header-right">
+        <div class="stat-pill credits-pill">CREDITS: <span id="creditsVal">02</span></div>
+        <div class="stat-pill lives-pill">LIVES: <span id="livesHearts">3 ❤️❤️❤️</span></div>
+        <button id="btnSoundToggle" class="btn-retro-icon" title="Toggle Sound">🔊</button>
+        <button id="btnPause" class="btn-retro-icon" title="Pause Game">⏸</button>
+        <button id="btnRestartHeader" class="btn-retro-icon" title="Restart Game">🔄</button>
       </div>
     </header>
 
-    <!-- CAPT-CHA ROBOT BOUNCER SPEECH BOX -->
+    <!-- 2. ROBOT BOUNCER SPEECH BOX (MATCHING SCREENSHOT) -->
     <section class="speech-box" aria-live="polite">
-      <div class="robot-avatar" title="CAPT-CHA">🤖</div>
-      <div class="dialogue-content">
-        <div class="dialogue-sender">CAPT-CHA // Security Bouncer</div>
+      <div class="bouncer-avatar-box">
+        <div class="bouncer-crt-icon">🤖</div>
+      </div>
+      <div class="dialogue-balloon">
+        <div class="dialogue-tag">BOUNCER_BOT:</div>
         <div id="dialogueText" class="dialogue-text">
-          Greetings, biological entity. Prove your squishy, inefficient, warm-blooded existence by passing 3 cat tests. Toasters will be recycled.
+          "HALT. IDENTIFY AS CARBON-BASED ORGANISM BEFORE ENTRY."
         </div>
       </div>
+      <div class="tape-tag">TODAY WATCHING</div>
     </section>
 
-    <!-- GAME HUD BAR -->
-    <div class="hud-bar">
-      <!-- Left: Lives & Level -->
-      <div class="hud-left">
-        <div id="heartsContainer" class="hearts-container" title="Remaining Lives">
-          <span class="heart active">❤️</span>
-          <span class="heart active">❤️</span>
-          <span class="heart active">❤️</span>
-        </div>
-        <span id="levelPill" class="level-pill">TEST 1 / 3</span>
-      </div>
-
-      <!-- Center: 30s Countdown Timer -->
-      <div class="hud-center">
-        <div class="timer-container" title="Level Time Remaining">
-          <div class="timer-track">
-            <div id="timerBar" class="timer-fill"></div>
-          </div>
-          <span id="timerText" class="timer-text">30s</span>
-        </div>
-      </div>
-
-      <!-- Right: Live Human Wobble Meter -->
-      <div class="hud-right">
-        <div class="wobble-container" title="Measured Hand Tremor">
-          <div class="wobble-track">
-            <div id="wobbleFill" class="wobble-fill"></div>
-          </div>
-          <span id="wobbleText" class="wobble-text">Human Wobble: 0%</span>
-        </div>
+    <!-- 3. HAZARD CAUTION TIMER BAR (MATCHING SCREENSHOT) -->
+    <div class="hazard-timer-bar">
+      <div id="timerBar" class="hazard-stripes-fill"></div>
+      <div class="hazard-timer-center">
+        <span id="timerText">TIME REMAINING: 30.0s</span>
       </div>
     </div>
 
-    <!-- CANVAS VIEWPORT & INTERACTIVE STAGE -->
+    <!-- 4. SUBHEADER / OBJECTIVE BAR -->
+    <div class="subheader-bar">
+      <div class="subheader-left">
+        <span id="subLevelBadge" class="badge-gold">TEST 01</span>
+        <span id="subLevelTitle" class="subheader-title">STEADY PAW</span>
+      </div>
+      <div id="subObjectiveText" class="subheader-center">OBJECTIVE: GUIDE THE PAW TO THE GOLD FISH WITHOUT CLIPPING</div>
+      <div id="subGoalTag" class="subheader-right">ROUNDS</div>
+    </div>
+
+    <!-- 5. MAIN VIEWPORT & INTERACTIVE STAGE -->
     <main class="viewport-wrapper">
       <canvas id="gameCanvas" width="960" height="540"></canvas>
 
-      <!-- SCREEN 1: START SCREEN -->
+      <!-- SCREEN 1: START SCREEN (MATCHING IMAGE 1 RIGHT) -->
       <div id="startScreen" class="overlay-screen">
-        <div class="start-card">
-          <span class="start-badge">SECURITY GATEWAY</span>
-          <h2 class="start-title">Prove You're Human<br><span style="color:#f59e0b;">(Cat Edition)</span></h2>
-          <p class="start-goal">Pass 3 tests to prove you're human. The bouncer watches your natural jitter, speed variance, and hesitation.</p>
-          <div class="button-row">
-            <button id="btnStartHuman" class="btn-primary">🐾 I Am Human (Start)</button>
-            <button id="btnRunBot" class="btn-secondary">🤖 Run Bot (Watch Rejection)</button>
+        <div class="start-card-retro">
+          <div class="start-two-col">
+            <!-- Left Column: Title & Buttons -->
+            <div class="start-col-left">
+              <h1 class="logo-3d">CAPT-CHA</h1>
+              <div class="start-sub">Prove you're human. Cat edition.</div>
+              <div class="pill-instruction">⊘ PASS 3 TESTS TO PROVE YOU'RE HUMAN.</div>
+              <div class="button-row-retro">
+                <button id="btnStartHuman" class="btn-retro btn-gold">▶ START</button>
+                <button id="btnRunBot" class="btn-retro btn-white">🤖 RUN BOT</button>
+              </div>
+              <div class="caption-insert-coin">INSERT COIN OR PRESS [SPACE] TO COMMENCE SECURITY PROTOCOL</div>
+            </div>
+
+            <!-- Right Column: Pass Badge with Pixel Art Preview -->
+            <div class="start-col-right">
+              <div class="security-pass-card">
+                <div class="pass-header">
+                  <span>PASS #42</span>
+                  <span>AUTH: LOCKED</span>
+                </div>
+                <canvas id="badgePreviewCanvas" width="250" height="150"></canvas>
+                <div class="pass-footer">
+                  <span>STATUS: VIGILANT</span>
+                  <span>LVL: 01</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Humanity Progression Bar -->
+          <div class="humanity-progression-bar">
+            <div class="prog-labels">
+              <span>HUMANITY INDEX PROGRESSION</span>
+              <span id="progIndexText">0 / 10 BLOCKS PROVEN</span>
+            </div>
+            <div id="progBlocksTrack" class="prog-blocks-track">
+              <!-- 10 blocks filled dynamically -->
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- SCREEN 2: LEVEL INTRO CARD -->
+      <!-- SCREEN 2: LEVEL INTRO CARD (MATCHING IMAGE 1 LEFT) -->
       <div id="introCard" class="overlay-screen hidden">
-        <div class="intro-modal">
-          <div id="introLevelName" class="intro-name">LEVEL 1: STEADY PAW</div>
-          <div id="introInstruction" class="intro-desc">Guide the paw to the fish. (Organic shakiness & wall bumps expected!)</div>
-          <div id="introCountdown" class="countdown-box">3</div>
+        <div class="intro-modal-retro">
+          <div class="caution-tag">⚠️ NO CLAWS!</div>
+          <div id="introBadge" class="intro-badge-top">[ 1 ]</div>
+          <div id="introLevelName" class="intro-name-retro">STEADY PAW</div>
+          <div class="intro-divider">-- 🐾 --</div>
+          <div id="introInstruction" class="intro-desc-retro">Guide the paw to the fish without touching the walls.</div>
+          
+          <div class="intro-preview-box">
+            <div id="introCountdown" class="pixel-countdown">3</div>
+            <div class="sub-await">AWAITING INPUT...</div>
+          </div>
+
+          <div class="intro-bottom-row">
+            <span style="font-family:var(--font-pixel); font-size:10px; font-weight:700;">READY! PRESS ANY KEY</span>
+            <button id="btnStartNow" class="btn-retro btn-gold" style="padding:6px 14px; font-size:10px;">START NOW -></button>
+          </div>
+          <div class="sub-keys-accept">MOUSE / TOUCH / ARROW KEYS ACCEPTED AS VALID BIOMETRICS</div>
         </div>
       </div>
 
       <!-- SCREEN 3: PASS / FAIL FLASH OVERLAY -->
       <div id="flashOverlay" class="overlay-screen hidden">
-        <div class="flash-box">
-          <div id="flashBadge" class="flash-badge pass">PASS</div>
-          <div id="flashReason" class="flash-reason">Passable clumsiness. Human verified.</div>
+        <div class="flash-box-retro">
+          <div id="flashBadge" class="flash-badge-retro pass">PASS</div>
+          <div id="flashReason" class="flash-reason-retro">Passable clumsiness. Human verified.</div>
         </div>
       </div>
 
       <!-- SCREEN 4: GAME OVER SCREEN -->
       <div id="gameOverScreen" class="overlay-screen hidden">
-        <div class="start-card">
-          <span class="start-badge" style="border-color:#ef4444; color:#ef4444;">SECURITY BREACH</span>
-          <h2 class="start-title" style="color:#ef4444;">HUMAN TEST FAILED</h2>
-          <p id="gameOverReason" class="start-goal">Out of lives. You have been classified as a Household Appliance.</p>
-          <div class="button-row">
-            <button id="btnGameOverRestart" class="btn-primary">🔄 Try Again (Restart)</button>
+        <div class="modal-retro-card">
+          <div style="font-size:36px;">🚨</div>
+          <div class="intro-badge-top" style="background:#fee2e2; color:#ef4444; border-color:#ef4444;">INCIDENT REPORT: SECURITY BREACH</div>
+          <h2 class="intro-name-retro" style="color:#ef4444;">HUMAN TEST FAILED</h2>
+          <div id="gameOverReason" class="intro-desc-retro">Out of lives. You have been classified as a Household Appliance.</div>
+          <div class="button-row-retro" style="margin-top:12px;">
+            <button id="btnGameOverRestart" class="btn-retro btn-gold">🔄 RETAKE TEST</button>
           </div>
         </div>
       </div>
 
       <!-- SCREEN 5: HUMAN CERTIFICATE -->
       <div id="certificateScreen" class="overlay-screen hidden">
-        <div class="cert-card">
-          <div class="cert-seal">🎖️</div>
-          <h2 class="cert-title">OFFICIAL HUMAN CERTIFICATE</h2>
-          <p class="cert-subtitle">This certifies that the tested entity possesses authentic biological inefficiency, organic shakiness, and sufficient hesitation.</p>
+        <div class="modal-retro-card">
+          <div class="cert-stamp-badge">🎖️</div>
+          <h2 class="cert-title-retro">OFFICIAL HUMAN CERTIFICATE</h2>
+          <p class="intro-desc-retro" style="font-size:11px;">This certifies that the tested entity possesses authentic biological inefficiency, organic shakiness, and sufficient hesitation.</p>
           
-          <div class="cert-score-box">
-            <div style="font-size:12px; color:#94a3b8; letter-spacing:1px; text-transform:uppercase;">Composite Human Score</div>
-            <div id="certScoreVal" class="cert-score-val">89 / 100</div>
+          <div class="score-display-retro">
+            <div style="font-size:10px; color:#64748b; font-family:var(--font-pixel);">COMPOSITE HUMAN SCORE</div>
+            <div id="certScoreVal" class="score-display-val">89 / 100</div>
           </div>
 
-          <div class="cert-details">
+          <div class="cert-breakdown-list">
             <div id="certL1Score">Steady Paw Tremor: 92%</div>
             <div id="certL2Score">Organic Petting Warmth: 88%</div>
             <div id="certL3Score">Static Motion Perception: 87%</div>
           </div>
 
-          <div class="button-row" style="margin-top:12px;">
-            <button id="btnCertRestart" class="btn-primary">🔄 Retake Test</button>
+          <div class="button-row-retro" style="margin-top:10px;">
+            <button id="btnCertRestart" class="btn-retro btn-gold">🔄 RE-VERIFY</button>
           </div>
         </div>
       </div>
 
       <!-- SCREEN 6: BOT REJECTION SUMMARY MODAL -->
       <div id="botModal" class="overlay-screen hidden">
-        <div class="bot-card">
-          <h2>🚫 Bot Rejected. Now You Try.</h2>
-          <p style="color:#cbd5e1; font-size:14px;">The scripted bot was detected and eliminated on every level:</p>
-          <div class="bot-summary-list">
+        <div class="modal-retro-card">
+          <div style="font-size:36px;">🚫</div>
+          <h2 class="intro-name-retro">BOT REJECTED. NOW YOU TRY.</h2>
+          <p class="intro-desc-retro">The automated bot failed security protocols on every level:</p>
+          <div class="cert-breakdown-list">
             <div>❌ <strong>Level 1:</strong> Laser-smooth trajectory with 0 wall bumps.</div>
             <div>❌ <strong>Level 2:</strong> Mechanical constant-speed petting.</div>
             <div>❌ <strong>Level 3:</strong> Blind to kinetic structure-from-motion static.</div>
           </div>
-          <p style="color:#94a3b8; font-size:13px;">Show the bouncer some real, clumsy human hand movement.</p>
-          <div class="button-row">
-            <button id="btnBotTryHuman" class="btn-primary">🐾 I Am Human (Start)</button>
+          <p style="font-size:11px; color:#64748b; font-family:var(--font-pixel);">Show the bouncer some real, clumsy human hand movement.</p>
+          <div class="button-row-retro" style="margin-top:10px;">
+            <button id="btnBotTryHuman" class="btn-retro btn-gold">🐾 I AM HUMAN (START)</button>
           </div>
         </div>
       </div>
 
     </main>
 
-    <!-- FOOTER (Prompt Requirement) -->
-    <footer class="footer-text">
-      This is a game, not real security.
-    </footer>
+    <!-- 6. BOTTOM PROGRESS BAR & STAGE TABS (MATCHING BOTH SCREENSHOTS) -->
+    <div class="bottom-progress-bar">
+      <div class="stage-tabs-row">
+        <div id="tabStage1" class="stage-tab active"><span class="tab-icon">🐱</span> STAGE 1</div>
+        <div id="tabStage2" class="stage-tab"><span class="tab-icon">🐾</span> STAGE 2</div>
+        <div id="tabStage3" class="stage-tab"><span class="tab-icon">👁️</span> STAGE 3</div>
+        <div id="tabStageVerify" class="stage-tab"><span class="tab-icon">✓</span> VERIFY</div>
+      </div>
+      <div class="human-calc-meter">
+        <span class="calc-label">HUMAN VERIFICATION METER:</span>
+        <div id="meterBlocks" class="meter-blocks-row">
+          <!-- 10 meter blocks -->
+        </div>
+        <span id="meterPctText" class="calc-pct">35% BIOLOGICAL</span>
+      </div>
+    </div>
+
+    <!-- 7. FOOTER DISCLAIMER PILL (PROMPT REQUIREMENT) -->
+    <div class="security-disclaimer-pill">
+      THIS IS A GAME, NOT REAL SECURITY.
+    </div>
 
   </div>
 
-  <!-- SCRIPTS (No build step, clean modular structure) -->
+  <!-- SCRIPTS -->
   <script src="config.js"></script>
   <script src="assets.js"></script>
   <script src="input.js"></script>
